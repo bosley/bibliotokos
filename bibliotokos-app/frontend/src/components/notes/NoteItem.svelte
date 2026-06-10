@@ -37,6 +37,13 @@
       </svg>
     </button>
   </div>
+  {#if note.tags && note.tags.length > 0}
+    <div class="tag-chips">
+      {#each note.tags as tag}
+        <span class="chip">{tag}</span>
+      {/each}
+    </div>
+  {/if}
 </div>
 
 <style>
@@ -99,5 +106,22 @@
   .delete:hover {
     color: var(--text);
     background: var(--bg-hover);
+  }
+
+  .tag-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px;
+    margin-top: 2px;
+  }
+
+  .chip {
+    padding: 1px 6px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+    white-space: nowrap;
   }
 </style>

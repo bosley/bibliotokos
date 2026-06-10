@@ -40,6 +40,13 @@ export class Note {
              */
             this["updatedAt"] = "";
         }
+        if (!("tags" in $$source)) {
+            /**
+             * @member
+             * @type {string[]}
+             */
+            this["tags"] = [];
+        }
 
         Object.assign(this, $$source);
     }
@@ -50,7 +57,102 @@ export class Note {
      * @returns {Note}
      */
     static createFrom($$source = {}) {
+        const $$createField4_0 = $$createType0;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("tags" in $$parsedSource) {
+            $$parsedSource["tags"] = $$createField4_0($$parsedSource["tags"]);
+        }
         return new Note(/** @type {Partial<Note>} */($$parsedSource));
     }
 }
+
+export class NoteHeader {
+    /**
+     * Creates a new NoteHeader instance.
+     * @param {Partial<NoteHeader>} [$$source = {}] - The source object to create the NoteHeader.
+     */
+    constructor($$source = {}) {
+        if (!("id" in $$source)) {
+            /**
+             * @member
+             * @type {string}
+             */
+            this["id"] = "";
+        }
+        if (!("title" in $$source)) {
+            /**
+             * @member
+             * @type {string}
+             */
+            this["title"] = "";
+        }
+        if (!("updatedAt" in $$source)) {
+            /**
+             * @member
+             * @type {string}
+             */
+            this["updatedAt"] = "";
+        }
+        if (!("tags" in $$source)) {
+            /**
+             * @member
+             * @type {string[]}
+             */
+            this["tags"] = [];
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new NoteHeader instance from a string or object.
+     * @param {any} [$$source = {}]
+     * @returns {NoteHeader}
+     */
+    static createFrom($$source = {}) {
+        const $$createField3_0 = $$createType0;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("tags" in $$parsedSource) {
+            $$parsedSource["tags"] = $$createField3_0($$parsedSource["tags"]);
+        }
+        return new NoteHeader(/** @type {Partial<NoteHeader>} */($$parsedSource));
+    }
+}
+
+export class Tag {
+    /**
+     * Creates a new Tag instance.
+     * @param {Partial<Tag>} [$$source = {}] - The source object to create the Tag.
+     */
+    constructor($$source = {}) {
+        if (!("id" in $$source)) {
+            /**
+             * @member
+             * @type {string}
+             */
+            this["id"] = "";
+        }
+        if (!("name" in $$source)) {
+            /**
+             * @member
+             * @type {string}
+             */
+            this["name"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new Tag instance from a string or object.
+     * @param {any} [$$source = {}]
+     * @returns {Tag}
+     */
+    static createFrom($$source = {}) {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new Tag(/** @type {Partial<Tag>} */($$parsedSource));
+    }
+}
+
+// Private type creation functions
+const $$createType0 = $Create.Array($Create.Any);

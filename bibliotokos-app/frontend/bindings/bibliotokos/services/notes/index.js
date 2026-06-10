@@ -8,5 +8,7 @@ export {
 };
 
 export {
-    Note
+    Note,
+    NoteHeader,
+    Tag
 } from "./models.js";
