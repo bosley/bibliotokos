@@ -1,0 +1,13 @@
+[Desktop Entry]
+Version=1.0
+Name=My Product
+Comment=A bibliotokos-app application
+# The Exec line includes %u to pass the URL to the application
+Exec=/usr/local/bin/bibliotokos-app %u
+Terminal=false
+Type=Application
+Icon=bibliotokos-app
+Categories=Utility;
+StartupWMClass=bibliotokos-app
+
+ 
