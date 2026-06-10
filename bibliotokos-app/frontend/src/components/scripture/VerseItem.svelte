@@ -1,8 +1,31 @@
 <script>
   export let verse
+
+  let copied = null
+
+  function copy(type) {
+    const value = type === 'ref' 
+      ? `${verse.book} ${verse.chapter}:${verse.verse}`
+      : verse.text
+    navigator.clipboard.writeText(value)
+    copied = type
+    setTimeout(() => copied = null, 800)
+  }
 </script>
 
 <div class="verse-item">
+  <div class="copy-pills">
+    <button 
+      class="pill" 
+      class:copied={copied === 'ref'}
+      on:click={() => copy('ref')}
+    >ref</button>
+    <button 
+      class="pill" 
+      class:copied={copied === 'txt'}
+      on:click={() => copy('txt')}
+    >txt</button>
+  </div>
   <span class="ref">{verse.book} {verse.chapter}:{verse.verse}</span>
   <span class="text">{verse.text}</span>
 </div>
@@ -18,6 +41,43 @@
 
   .verse-item:hover {
     border-bottom-color: var(--border);
+  }
+
+  .copy-pills {
+    display: flex;
+    gap: 4px;
+    opacity: 0;
+    transition: opacity 0.15s;
+    flex-shrink: 0;
+    padding-top: 2px;
+  }
+
+  .verse-item:hover .copy-pills {
+    opacity: 1;
+  }
+
+  .pill {
+    font-size: 9px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    padding: 2px 5px;
+    border-radius: 3px;
+    border: none;
+    cursor: pointer;
+    background: var(--bg-alt);
+    color: var(--text-muted);
+    transition: background 0.15s, color 0.15s;
+  }
+
+  .pill:hover {
+    background: var(--accent);
+    color: white;
+  }
+
+  .pill.copied {
+    background: var(--accent);
+    color: white;
   }
 
   .ref {

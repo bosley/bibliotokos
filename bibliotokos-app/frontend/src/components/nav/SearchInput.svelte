@@ -41,7 +41,6 @@
     padding: 0 12px;
     height: 34px;
     max-width: 480px;
-    -webkit-app-region: no-drag;
     transition: border-color 0.15s;
   }
 

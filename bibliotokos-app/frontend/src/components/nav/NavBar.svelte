@@ -1,5 +1,5 @@
 <script>
-  import { Events } from '@wailsio/runtime'
+  import { Events, Window } from '@wailsio/runtime'
   import NavButton from './NavButton.svelte'
   import SearchInput from './SearchInput.svelte'
   import ThemeToggle from './ThemeToggle.svelte'
@@ -41,10 +41,15 @@
   function handleKey(e) {
     if (e.key === 'Escape') closeModals()
   }
+
+  function handleTitlebarDblClick() {
+    Window.ToggleMaximise()
+  }
 </script>
 
 <svelte:window on:keydown={handleKey} />
 
+<div class="titlebar" on:dblclick={handleTitlebarDblClick}></div>
 <nav class="navbar">
   <div class="left">
     <NavButton title="Scripture">
@@ -82,8 +87,8 @@
 </nav>
 
 {#if showInfo}
-  <div class="modal-backdrop" on:click={closeModals}>
-    <div class="modal" on:click|stopPropagation>
+  <button class="modal-backdrop" on:click={closeModals} aria-label="Close modal">
+    <div class="modal" role="dialog" on:click|stopPropagation on:keydown|stopPropagation>
       <div class="modal-header">
         <span>Info</span>
         <button class="close-btn" on:click={closeModals}>×</button>
@@ -99,12 +104,12 @@
         <p>All Bible texts are either Public Domain or licensed under Creative Commons (CC).</p>
       </div>
     </div>
-  </div>
+  </button>
 {/if}
 
 {#if showHelp}
-  <div class="modal-backdrop" on:click={closeModals}>
-    <div class="modal help-modal" on:click|stopPropagation>
+  <button class="modal-backdrop" on:click={closeModals} aria-label="Close modal">
+    <div class="modal help-modal" role="dialog" on:click|stopPropagation on:keydown|stopPropagation>
       <div class="modal-header">
         <span>Help</span>
         <button class="close-btn" on:click={closeModals}>×</button>
@@ -139,41 +144,43 @@
         <p>In the Notes window, use the "Link passage" button to associate a Bible reference with a note. When you view that passage (or section) in the main Scripture window, any linked notes will appear in a bar at the bottom of the pane. Click a linked note to jump back to it.</p>
       </div>
     </div>
-  </div>
+  </button>
 {/if}
 
 <style>
+  .titlebar {
+    height: 38px;
+    background: var(--bg-surface);
+    flex-shrink: 0;
+  }
+
   .navbar {
     height: var(--nav-height);
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 0 16px 0 80px;
+    padding: 0 16px;
     border-bottom: 1px solid var(--border);
     background: var(--bg);
     flex-shrink: 0;
-    -webkit-app-region: drag;
   }
 
   .left {
     display: flex;
     align-items: center;
     gap: 4px;
-    -webkit-app-region: no-drag;
   }
 
   .center {
     flex: 1;
     display: flex;
     justify-content: center;
-    -webkit-app-region: no-drag;
   }
 
   .right {
     display: flex;
     align-items: center;
     gap: 4px;
-    -webkit-app-region: no-drag;
   }
 
   .icon-btn {
@@ -186,7 +193,6 @@
     color: var(--text-muted);
     transition: color 0.15s, background 0.15s;
     flex-shrink: 0;
-    -webkit-app-region: no-drag;
     background: transparent;
     border: none;
     cursor: pointer;
@@ -205,6 +211,8 @@
     align-items: center;
     justify-content: center;
     z-index: 1000;
+    border: none;
+    cursor: default;
   }
 
   .modal {

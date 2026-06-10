@@ -61,7 +61,7 @@ func main() {
 		Width:  1200,
 		Height: 900,
 		Mac: application.MacWindow{
-			InvisibleTitleBarHeight: 50,
+			InvisibleTitleBarHeight: 38,
 			Backdrop:                application.MacBackdropTranslucent,
 			TitleBar:                application.MacTitleBarHiddenInset,
 		},
@@ -77,9 +77,9 @@ func main() {
 		app.Window.NewWithOptions(application.WebviewWindowOptions{
 			Title:  "Notes — BiblioTokos",
 			Width:  900,
-			Height: 850,
+			Height: 680,
 			Mac: application.MacWindow{
-				InvisibleTitleBarHeight: 50,
+				InvisibleTitleBarHeight: 38,
 				Backdrop:                application.MacBackdropTranslucent,
 				TitleBar:                application.MacTitleBarHiddenInset,
 			},
