@@ -48,6 +48,55 @@ export class Book {
     }
 }
 
+export class PassageRange {
+    /**
+     * Creates a new PassageRange instance.
+     * @param {Partial<PassageRange>} [$$source = {}] - The source object to create the PassageRange.
+     */
+    constructor($$source = {}) {
+        if (!("book" in $$source)) {
+            /**
+             * @member
+             * @type {string}
+             */
+            this["book"] = "";
+        }
+        if (!("display" in $$source)) {
+            /**
+             * @member
+             * @type {string}
+             */
+            this["display"] = "";
+        }
+        if (!("startPos" in $$source)) {
+            /**
+             * @member
+             * @type {number}
+             */
+            this["startPos"] = 0;
+        }
+        if (!("endPos" in $$source)) {
+            /**
+             * @member
+             * @type {number}
+             */
+            this["endPos"] = 0;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new PassageRange instance from a string or object.
+     * @param {any} [$$source = {}]
+     * @returns {PassageRange}
+     */
+    static createFrom($$source = {}) {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new PassageRange(/** @type {Partial<PassageRange>} */($$parsedSource));
+    }
+}
+
 export class Verse {
     /**
      * Creates a new Verse instance.

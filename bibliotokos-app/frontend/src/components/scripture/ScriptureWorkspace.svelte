@@ -3,14 +3,25 @@
   import { get } from 'svelte/store'
   import { query, versions } from '../../stores/scripture.js'
   import { Query } from '../../../bindings/bibliotokos/services/bible/bibleservice.js'
+  import { GetLinkedNotes } from '../../../bindings/bibliotokos/services/notes/notesservice.js'
   import ScripturePane from './ScripturePane.svelte'
   import PaneDivider from './PaneDivider.svelte'
+  import LinkedNotesBar from './LinkedNotesBar.svelte'
 
   let panes = [
     { id: crypto.randomUUID(), versionId: '', verses: [], widthFlex: 1, loading: false }
   ]
 
   let containerEl
+  let linkedNotes = []
+
+  async function refreshLinkedNotes(q) {
+    if (!q) {
+      linkedNotes = []
+      return
+    }
+    linkedNotes = await GetLinkedNotes(q).catch(() => [])
+  }
 
   onMount(() => {
     const unsubVersions = versions.subscribe(vs => {
@@ -32,6 +43,7 @@
       } else {
         panes = panes.map(p => ({ ...p, verses: [], loading: false }))
       }
+      refreshLinkedNotes(q)
     })
 
     return () => {
@@ -39,6 +51,10 @@
       unsubQuery()
     }
   })
+
+  function handleWindowFocus() {
+    refreshLinkedNotes(get(query))
+  }
 
   async function queryPane(index) {
     const pane = panes[index]
@@ -114,27 +130,40 @@
   }
 </script>
 
-<div class="workspace" bind:this={containerEl}>
-  {#each panes as pane, i (pane.id)}
-    <ScripturePane
-      {pane}
-      canRemove={panes.length > 1}
-      on:addpane={() => addPane(i)}
-      on:removepane={() => removePane(i)}
-      on:versionchange={e => changeVersion(i, e.detail)}
-    />
-    {#if i < panes.length - 1}
-      <PaneDivider on:dragstart={e => startResize(i, e.detail)} />
-    {/if}
-  {/each}
+<svelte:window on:focus={handleWindowFocus} />
+
+<div class="workspace">
+  <div class="panes" bind:this={containerEl}>
+    {#each panes as pane, i (pane.id)}
+      <ScripturePane
+        {pane}
+        canRemove={panes.length > 1}
+        on:addpane={() => addPane(i)}
+        on:removepane={() => removePane(i)}
+        on:versionchange={e => changeVersion(i, e.detail)}
+      />
+      {#if i < panes.length - 1}
+        <PaneDivider on:dragstart={e => startResize(i, e.detail)} />
+      {/if}
+    {/each}
+  </div>
+  <LinkedNotesBar {linkedNotes} />
 </div>
 
 <style>
   .workspace {
     display: flex;
-    flex-direction: row;
+    flex-direction: column;
     height: 100%;
     width: 100%;
+    overflow: hidden;
+  }
+
+  .panes {
+    flex: 1;
+    display: flex;
+    flex-direction: row;
+    min-height: 0;
     overflow: hidden;
   }
 </style>

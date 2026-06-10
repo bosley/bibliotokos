@@ -13,6 +13,7 @@ import (
 	_ "modernc.org/sqlite"
 
 	"bibliotokos/platform"
+	"bibliotokos/services/bible"
 )
 
 type NoteHeader struct {
@@ -23,11 +24,12 @@ type NoteHeader struct {
 }
 
 type Note struct {
-	ID        string   `json:"id"`
-	Title     string   `json:"title"`
-	Content   string   `json:"content"`
-	UpdatedAt string   `json:"updatedAt"`
-	Tags      []string `json:"tags"`
+	ID        string    `json:"id"`
+	Title     string    `json:"title"`
+	Content   string    `json:"content"`
+	UpdatedAt string    `json:"updatedAt"`
+	Tags      []string  `json:"tags"`
+	Passages  []Passage `json:"passages"`
 }
 
 type Tag struct {
@@ -35,8 +37,24 @@ type Tag struct {
 	Name string `json:"name"`
 }
 
+type Passage struct {
+	ID        string `json:"id"`
+	Reference string `json:"reference"`
+}
+
+type LinkedNote struct {
+	NoteID     string   `json:"noteId"`
+	Title      string   `json:"title"`
+	References []string `json:"references"`
+}
+
 type NotesService struct {
-	db *sql.DB
+	db    *sql.DB
+	bible *bible.BibleService
+}
+
+func New(b *bible.BibleService) *NotesService {
+	return &NotesService{bible: b}
 }
 
 func (s *NotesService) Init() error {
@@ -81,7 +99,17 @@ CREATE TABLE IF NOT EXISTS note_tags (
     note_id TEXT NOT NULL REFERENCES notes(id) ON DELETE CASCADE,
     tag_id  TEXT NOT NULL REFERENCES tags(id)  ON DELETE CASCADE,
     PRIMARY KEY (note_id, tag_id)
-);`
+);
+CREATE TABLE IF NOT EXISTS note_passages (
+    id        TEXT PRIMARY KEY,
+    note_id   TEXT NOT NULL REFERENCES notes(id) ON DELETE CASCADE,
+    reference TEXT NOT NULL,
+    book      TEXT NOT NULL,
+    start_pos INTEGER NOT NULL,
+    end_pos   INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_note_passages_note ON note_passages(note_id);
+CREATE INDEX IF NOT EXISTS idx_note_passages_range ON note_passages(start_pos, end_pos);`
 
 	if _, err := s.db.Exec(schema); err != nil {
 		return fmt.Errorf("create schema: %w", err)
@@ -178,7 +206,101 @@ func (s *NotesService) GetNote(id string) (Note, error) {
 		return Note{}, err
 	}
 	n.Tags = tags
+	passages, err := s.notePassages(id)
+	if err != nil {
+		return Note{}, err
+	}
+	n.Passages = passages
 	return n, nil
+}
+
+func (s *NotesService) notePassages(noteID string) ([]Passage, error) {
+	rows, err := s.db.Query(`
+		SELECT id, reference FROM note_passages
+		WHERE note_id = ?
+		ORDER BY start_pos, end_pos`, noteID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	passages := []Passage{}
+	for rows.Next() {
+		var p Passage
+		if err := rows.Scan(&p.ID, &p.Reference); err != nil {
+			return nil, err
+		}
+		passages = append(passages, p)
+	}
+	return passages, rows.Err()
+}
+
+func (s *NotesService) LinkPassage(noteID string, ref string) (Passage, error) {
+	pr, err := s.bible.ResolveRange(ref)
+	if err != nil {
+		return Passage{}, err
+	}
+
+	var existing Passage
+	err = s.db.QueryRow(`
+		SELECT id, reference FROM note_passages
+		WHERE note_id = ? AND start_pos = ? AND end_pos = ?`,
+		noteID, pr.StartPos, pr.EndPos).Scan(&existing.ID, &existing.Reference)
+	if err == nil {
+		return existing, nil
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		return Passage{}, err
+	}
+
+	p := Passage{ID: newID(), Reference: pr.Display}
+	_, err = s.db.Exec(`
+		INSERT INTO note_passages (id, note_id, reference, book, start_pos, end_pos)
+		VALUES (?, ?, ?, ?, ?, ?)`,
+		p.ID, noteID, pr.Display, pr.Book, pr.StartPos, pr.EndPos)
+	if err != nil {
+		return Passage{}, fmt.Errorf("link passage: %w", err)
+	}
+	return p, nil
+}
+
+func (s *NotesService) UnlinkPassage(passageID string) error {
+	_, err := s.db.Exec("DELETE FROM note_passages WHERE id = ?", passageID)
+	return err
+}
+
+func (s *NotesService) GetLinkedNotes(ref string) ([]LinkedNote, error) {
+	pr, err := s.bible.ResolveRange(ref)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := s.db.Query(`
+		SELECT n.id, n.title, p.reference
+		FROM note_passages p
+		JOIN notes n ON n.id = p.note_id
+		WHERE p.start_pos <= ? AND p.end_pos >= ?
+		ORDER BY n.updated_at DESC, n.id, p.start_pos`,
+		pr.EndPos, pr.StartPos)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	linked := []LinkedNote{}
+	index := map[string]int{}
+	for rows.Next() {
+		var noteID, title, reference string
+		if err := rows.Scan(&noteID, &title, &reference); err != nil {
+			return nil, err
+		}
+		if i, ok := index[noteID]; ok {
+			linked[i].References = append(linked[i].References, reference)
+		} else {
+			index[noteID] = len(linked)
+			linked = append(linked, LinkedNote{NoteID: noteID, Title: title, References: []string{reference}})
+		}
+	}
+	return linked, rows.Err()
 }
 
 func (s *NotesService) SaveNote(note Note) error {

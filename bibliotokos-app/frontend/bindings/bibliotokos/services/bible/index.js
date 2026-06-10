@@ -9,6 +9,7 @@ export {
 
 export {
     Book,
+    PassageRange,
     Verse,
     Version
 } from "./models.js";

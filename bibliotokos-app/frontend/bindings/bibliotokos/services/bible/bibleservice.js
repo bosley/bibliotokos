@@ -47,6 +47,16 @@ export function Query(queryStr, selectedBooks, selectedVersions) {
     }));
 }
 
+/**
+ * @param {string} refStr
+ * @returns {$CancellablePromise<$models.PassageRange>}
+ */
+export function ResolveRange(refStr) {
+    return $Call.ByID(1117089036, refStr).then(/** @type {($result: any) => any} */(($result) => {
+        return $$createType6($result);
+    }));
+}
+
 // Private type creation functions
 const $$createType0 = $models.Book.createFrom;
 const $$createType1 = $Create.Array($$createType0);
@@ -54,3 +64,4 @@ const $$createType2 = $models.Version.createFrom;
 const $$createType3 = $Create.Array($$createType2);
 const $$createType4 = $models.Verse.createFrom;
 const $$createType5 = $Create.Array($$createType4);
+const $$createType6 = $models.PassageRange.createFrom;

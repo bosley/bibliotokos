@@ -37,12 +37,22 @@ export function DeleteTag(id) {
 }
 
 /**
+ * @param {string} ref
+ * @returns {$CancellablePromise<$models.LinkedNote[]>}
+ */
+export function GetLinkedNotes(ref) {
+    return $Call.ByID(2041018787, ref).then(/** @type {($result: any) => any} */(($result) => {
+        return $$createType2($result);
+    }));
+}
+
+/**
  * @param {string} id
  * @returns {$CancellablePromise<$models.Note>}
  */
 export function GetNote(id) {
     return $Call.ByID(1655260611, id).then(/** @type {($result: any) => any} */(($result) => {
-        return $$createType1($result);
+        return $$createType3($result);
     }));
 }
 
@@ -51,7 +61,7 @@ export function GetNote(id) {
  */
 export function GetTags() {
     return $Call.ByID(811274038).then(/** @type {($result: any) => any} */(($result) => {
-        return $$createType2($result);
+        return $$createType4($result);
     }));
 }
 
@@ -63,11 +73,22 @@ export function Init() {
 }
 
 /**
+ * @param {string} noteID
+ * @param {string} ref
+ * @returns {$CancellablePromise<$models.Passage>}
+ */
+export function LinkPassage(noteID, ref) {
+    return $Call.ByID(3676623459, noteID, ref).then(/** @type {($result: any) => any} */(($result) => {
+        return $$createType5($result);
+    }));
+}
+
+/**
  * @returns {$CancellablePromise<$models.NoteHeader[]>}
  */
 export function ListNotes() {
     return $Call.ByID(643541650).then(/** @type {($result: any) => any} */(($result) => {
-        return $$createType4($result);
+        return $$createType7($result);
     }));
 }
 
@@ -79,9 +100,20 @@ export function SaveNote(note) {
     return $Call.ByID(2666709232, note);
 }
 
+/**
+ * @param {string} passageID
+ * @returns {$CancellablePromise<void>}
+ */
+export function UnlinkPassage(passageID) {
+    return $Call.ByID(774301718, passageID);
+}
+
 // Private type creation functions
 const $$createType0 = $models.Tag.createFrom;
-const $$createType1 = $models.Note.createFrom;
-const $$createType2 = $Create.Array($$createType0);
-const $$createType3 = $models.NoteHeader.createFrom;
-const $$createType4 = $Create.Array($$createType3);
+const $$createType1 = $models.LinkedNote.createFrom;
+const $$createType2 = $Create.Array($$createType1);
+const $$createType3 = $models.Note.createFrom;
+const $$createType4 = $Create.Array($$createType0);
+const $$createType5 = $models.Passage.createFrom;
+const $$createType6 = $models.NoteHeader.createFrom;
+const $$createType7 = $Create.Array($$createType6);

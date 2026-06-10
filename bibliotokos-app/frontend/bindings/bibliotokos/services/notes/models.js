@@ -6,6 +6,52 @@
 // @ts-ignore: Unused imports
 import { Create as $Create } from "@wailsio/runtime";
 
+export class LinkedNote {
+    /**
+     * Creates a new LinkedNote instance.
+     * @param {Partial<LinkedNote>} [$$source = {}] - The source object to create the LinkedNote.
+     */
+    constructor($$source = {}) {
+        if (!("noteId" in $$source)) {
+            /**
+             * @member
+             * @type {string}
+             */
+            this["noteId"] = "";
+        }
+        if (!("title" in $$source)) {
+            /**
+             * @member
+             * @type {string}
+             */
+            this["title"] = "";
+        }
+        if (!("references" in $$source)) {
+            /**
+             * @member
+             * @type {string[]}
+             */
+            this["references"] = [];
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new LinkedNote instance from a string or object.
+     * @param {any} [$$source = {}]
+     * @returns {LinkedNote}
+     */
+    static createFrom($$source = {}) {
+        const $$createField2_0 = $$createType0;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("references" in $$parsedSource) {
+            $$parsedSource["references"] = $$createField2_0($$parsedSource["references"]);
+        }
+        return new LinkedNote(/** @type {Partial<LinkedNote>} */($$parsedSource));
+    }
+}
+
 export class Note {
     /**
      * Creates a new Note instance.
@@ -47,6 +93,13 @@ export class Note {
              */
             this["tags"] = [];
         }
+        if (!("passages" in $$source)) {
+            /**
+             * @member
+             * @type {Passage[]}
+             */
+            this["passages"] = [];
+        }
 
         Object.assign(this, $$source);
     }
@@ -58,9 +111,13 @@ export class Note {
      */
     static createFrom($$source = {}) {
         const $$createField4_0 = $$createType0;
+        const $$createField5_0 = $$createType2;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("tags" in $$parsedSource) {
             $$parsedSource["tags"] = $$createField4_0($$parsedSource["tags"]);
+        }
+        if ("passages" in $$parsedSource) {
+            $$parsedSource["passages"] = $$createField5_0($$parsedSource["passages"]);
         }
         return new Note(/** @type {Partial<Note>} */($$parsedSource));
     }
@@ -119,6 +176,41 @@ export class NoteHeader {
     }
 }
 
+export class Passage {
+    /**
+     * Creates a new Passage instance.
+     * @param {Partial<Passage>} [$$source = {}] - The source object to create the Passage.
+     */
+    constructor($$source = {}) {
+        if (!("id" in $$source)) {
+            /**
+             * @member
+             * @type {string}
+             */
+            this["id"] = "";
+        }
+        if (!("reference" in $$source)) {
+            /**
+             * @member
+             * @type {string}
+             */
+            this["reference"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new Passage instance from a string or object.
+     * @param {any} [$$source = {}]
+     * @returns {Passage}
+     */
+    static createFrom($$source = {}) {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new Passage(/** @type {Partial<Passage>} */($$parsedSource));
+    }
+}
+
 export class Tag {
     /**
      * Creates a new Tag instance.
@@ -156,3 +248,5 @@ export class Tag {
 
 // Private type creation functions
 const $$createType0 = $Create.Array($Create.Any);
+const $$createType1 = Passage.createFrom;
+const $$createType2 = $Create.Array($$createType1);

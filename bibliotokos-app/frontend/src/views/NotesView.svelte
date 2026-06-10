@@ -8,6 +8,8 @@
     DeleteNote,
     CreateTag,
     DeleteTag,
+    LinkPassage,
+    UnlinkPassage,
   } from '../../bindings/bibliotokos/services/notes/notesservice.js'
   import NotesSidebar from '../components/notes/NotesSidebar.svelte'
   import NoteEditor from '../components/notes/NoteEditor.svelte'
@@ -20,6 +22,7 @@
   let selectedTagId = null
   let isDirty = false
   let saveTimer = null
+  let passageError = ''
 
   let sidebarWidth = 260
   let collapsed = false
@@ -31,7 +34,10 @@
     ])
     noteHeaders = headers ?? []
     tags = tagList ?? []
-    if (noteHeaders.length > 0) {
+    const requestedId = new URLSearchParams(window.location.search).get('note')
+    if (requestedId && noteHeaders.some(h => h.id === requestedId)) {
+      await selectNote(requestedId)
+    } else if (noteHeaders.length > 0) {
       await selectNote(noteHeaders[0].id)
     }
   })
@@ -60,6 +66,7 @@
     activeNote = fetched
     activeNoteId = id
     isDirty = false
+    passageError = ''
   }
 
   async function createNote() {
@@ -70,6 +77,7 @@
       content: '',
       updatedAt: '',
       tags: [],
+      passages: [],
     }
     await SaveNote(note)
     noteHeaders = await ListNotes().catch(() => noteHeaders)
@@ -137,6 +145,25 @@
     noteHeaders = await ListNotes().catch(() => noteHeaders)
   }
 
+  async function addPassageToNote(ref) {
+    if (!activeNote) return
+    try {
+      const passage = await LinkPassage(activeNote.id, ref)
+      if (!activeNote.passages.some(p => p.id === passage.id)) {
+        activeNote = { ...activeNote, passages: [...activeNote.passages, passage] }
+      }
+      passageError = ''
+    } catch (err) {
+      passageError = String(err?.message ?? err ?? 'Invalid reference')
+    }
+  }
+
+  async function removePassageFromNote(passageId) {
+    if (!activeNote) return
+    await UnlinkPassage(passageId).catch(() => {})
+    activeNote = { ...activeNote, passages: activeNote.passages.filter(p => p.id !== passageId) }
+  }
+
   function startResize(startX) {
     const startWidth = sidebarWidth
     function onMove(e) {
@@ -188,10 +215,14 @@
         note={activeNote}
         {tags}
         {isDirty}
+        {passageError}
         on:change={e => handleEditorChange(activeNoteId, e.detail)}
         on:save={flushSave}
         on:addtag={e => addTagToNote(e.detail)}
         on:removetag={e => removeTagFromNote(e.detail)}
+        on:addpassage={e => addPassageToNote(e.detail)}
+        on:removepassage={e => removePassageFromNote(e.detail)}
+        on:passageerrorclear={() => { passageError = '' }}
       />
     {/key}
   </div>

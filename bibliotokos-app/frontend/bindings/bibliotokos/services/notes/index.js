@@ -8,7 +8,9 @@ export {
 };
 
 export {
+    LinkedNote,
     Note,
     NoteHeader,
+    Passage,
     Tag
 } from "./models.js";

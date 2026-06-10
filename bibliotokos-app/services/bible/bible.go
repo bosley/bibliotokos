@@ -58,6 +58,7 @@ var extraAliases = map[string]string{
 	"1pet": "Pe1", "2pet": "Pe2", "1john": "Jo1", "2john": "Jo2",
 	"3john": "Jo3", "1jn": "Jo1", "2jn": "Jo2", "3jn": "Jo3",
 	"apoc": "Rev", "mk": "Mar", "lk": "Luk", "jn": "Joh", "mt": "Mat",
+	"matt": "Mat",
 	"ac": "Act", "gn": "Gen", "dt": "Deu", "deut": "Deu",
 	"ex": "Exo", "exod": "Exo", "lv": "Lev", "nm": "Num",
 	"jsh": "Jos", "jg": "Jdg", "jdgs": "Jdg", "ru": "Rut",
@@ -379,4 +380,132 @@ func (b *BibleService) bookOrd(abbr string) (int, error) {
 		return 0, fmt.Errorf("unknown book %q", abbr)
 	}
 	return ord, nil
+}
+
+type PassageRange struct {
+	Book     string `json:"book"`
+	Display  string `json:"display"`
+	StartPos int    `json:"startPos"`
+	EndPos   int    `json:"endPos"`
+}
+
+func encodePos(ord, chapter, verse int) int {
+	return ord*1_000_000 + chapter*1_000 + verse
+}
+
+func (b *BibleService) bookInfo(abbr string) (string, int, error) {
+	var name string
+	var ord int
+	err := b.db.QueryRow("SELECT name, ord FROM books WHERE abbr = ?", abbr).Scan(&name, &ord)
+	if err != nil {
+		return "", 0, fmt.Errorf("unknown book %q", abbr)
+	}
+	return name, ord, nil
+}
+
+func renderRef(bookName string, r ref) string {
+	if r.chapter == 0 {
+		return bookName
+	}
+	if r.verseStart == 0 {
+		return fmt.Sprintf("%s %d", bookName, r.chapter)
+	}
+	if r.verseEnd != 0 && r.verseEnd != r.verseStart {
+		return fmt.Sprintf("%s %d:%d-%d", bookName, r.chapter, r.verseStart, r.verseEnd)
+	}
+	return fmt.Sprintf("%s %d:%d", bookName, r.chapter, r.verseStart)
+}
+
+func (b *BibleService) ResolveRange(refStr string) (PassageRange, error) {
+	if b.db == nil {
+		return PassageRange{}, fmt.Errorf("database not initialized")
+	}
+	refStr = strings.TrimSpace(refStr)
+	if refStr == "" {
+		return PassageRange{}, fmt.Errorf("empty reference")
+	}
+
+	if idx := strings.Index(refStr, " - "); idx != -1 {
+		left, err := parseRef(refStr[:idx])
+		if err != nil {
+			return PassageRange{}, err
+		}
+		right, err := parseRef(refStr[idx+3:])
+		if err != nil {
+			return PassageRange{}, err
+		}
+		left.book = b.normalizeBook(left.book)
+		right.book = b.normalizeBook(right.book)
+
+		leftName, leftOrd, err := b.bookInfo(left.book)
+		if err != nil {
+			return PassageRange{}, err
+		}
+		rightName, rightOrd, err := b.bookInfo(right.book)
+		if err != nil {
+			return PassageRange{}, err
+		}
+
+		chStart, vsStart := left.chapter, left.verseStart
+		if chStart == 0 {
+			chStart = 1
+		}
+		if vsStart == 0 {
+			vsStart = 1
+		}
+		chEnd := right.chapter
+		if chEnd == 0 {
+			chEnd = 999
+		}
+		vsEnd := right.verseEnd
+		if vsEnd == 0 {
+			if right.verseStart != 0 {
+				vsEnd = right.verseStart
+			} else {
+				vsEnd = 999
+			}
+		}
+
+		pr := PassageRange{
+			Book:     left.book,
+			Display:  renderRef(leftName, left) + " - " + renderRef(rightName, right),
+			StartPos: encodePos(leftOrd, chStart, vsStart),
+			EndPos:   encodePos(rightOrd, chEnd, vsEnd),
+		}
+		if pr.StartPos > pr.EndPos {
+			return PassageRange{}, fmt.Errorf("reference range is reversed: %q", refStr)
+		}
+		return pr, nil
+	}
+
+	r, err := parseRef(refStr)
+	if err != nil {
+		return PassageRange{}, err
+	}
+	r.book = b.normalizeBook(r.book)
+	name, ord, err := b.bookInfo(r.book)
+	if err != nil {
+		return PassageRange{}, err
+	}
+
+	chStart, chEnd := r.chapter, r.chapter
+	vsStart, vsEnd := r.verseStart, r.verseEnd
+	if r.chapter == 0 {
+		chStart, chEnd = 1, 999
+		vsStart, vsEnd = 1, 999
+	} else if r.verseStart == 0 {
+		vsStart, vsEnd = 1, 999
+	} else if vsEnd == 0 {
+		vsEnd = vsStart
+	}
+	if vsEnd < vsStart {
+		return PassageRange{}, fmt.Errorf("verse range is reversed: %q", refStr)
+	}
+
+	return PassageRange{
+		Book:     r.book,
+		Display:  renderRef(name, r),
+		StartPos: encodePos(ord, chStart, vsStart),
+		EndPos:   encodePos(ord, chEnd, vsEnd),
+	}, nil
 }

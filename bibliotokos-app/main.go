@@ -3,6 +3,7 @@ package main
 import (
 	"embed"
 	"log"
+	neturl "net/url"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 
@@ -10,6 +11,20 @@ import (
 	"bibliotokos/services/notes"
 	"bibliotokos/services/system"
 )
+
+func eventString(data any) string {
+	switch v := data.(type) {
+	case string:
+		return v
+	case []any:
+		if len(v) > 0 {
+			if s, ok := v[0].(string); ok {
+				return s
+			}
+		}
+	}
+	return ""
+}
 
 //go:embed all:frontend/dist
 var assets embed.FS
@@ -20,7 +35,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	notesService := &notes.NotesService{}
+	notesService := notes.New(bibleService)
 	if err := notesService.Init(); err != nil {
 		log.Fatal(err)
 	}
@@ -53,9 +68,13 @@ func main() {
 	})
 
 	app.Event.On("open-notes", func(e *application.CustomEvent) {
+		url := "/?view=notes"
+		if noteID := eventString(e.Data); noteID != "" {
+			url += "&note=" + neturl.QueryEscape(noteID)
+		}
 		app.Window.NewWithOptions(application.WebviewWindowOptions{
-			Title: "Notes — BiblioTokos",
-			Width: 900,
+			Title:  "Notes — BiblioTokos",
+			Width:  900,
 			Height: 680,
 			Mac: application.MacWindow{
 				InvisibleTitleBarHeight: 50,
@@ -63,7 +82,7 @@ func main() {
 				TitleBar:                application.MacTitleBarHiddenInset,
 			},
 			BackgroundColour: application.NewRGB(27, 38, 54),
-			URL:              "/?view=notes",
+			URL:              url,
 		})
 	})
 
