@@ -72,25 +72,38 @@ func (b *BibleService) buildBookLookup() error {
 		return err
 	}
 	defer rows.Close()
-	lookup := make(map[string]string)
+	type bookRow struct{ abbr, name string }
+	var all []bookRow
 	for rows.Next() {
-		var abbr, name string
-		if err := rows.Scan(&abbr, &name); err != nil {
+		var br bookRow
+		if err := rows.Scan(&br.abbr, &br.name); err != nil {
 			return err
 		}
-		lookup[strings.ToLower(abbr)] = abbr
-		lookup[strings.ToLower(name)] = abbr
-		nospace := strings.ReplaceAll(strings.ToLower(name), " ", "")
-		lookup[nospace] = abbr
-		if len(name) >= 3 {
-			lookup[strings.ToLower(name[:3])] = abbr
+		all = append(all, br)
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	lookup := make(map[string]string)
+	for _, br := range all {
+		lookup[strings.ToLower(br.name)] = br.abbr
+		nospace := strings.ReplaceAll(strings.ToLower(br.name), " ", "")
+		lookup[nospace] = br.abbr
+		if len(br.name) >= 3 {
+			key := strings.ToLower(br.name[:3])
+			if _, ok := lookup[key]; !ok {
+				lookup[key] = br.abbr
+			}
 		}
 	}
 	for alias, abbr := range extraAliases {
 		lookup[alias] = abbr
 	}
+	for _, br := range all {
+		lookup[strings.ToLower(br.abbr)] = br.abbr
+	}
 	b.bookLookup = lookup
-	return rows.Err()
+	return nil
 }
 
 func (b *BibleService) normalizeBook(raw string) string {
@@ -185,64 +198,30 @@ func (b *BibleService) GetVersions() ([]Version, error) {
 	return versions, rows.Err()
 }
 
-func placeholders(n int) string {
-	if n == 0 {
-		return ""
-	}
-	return strings.TrimRight(strings.Repeat("?,", n), ",")
+type VersePage struct {
+	Total  int     `json:"total"`
+	Offset int     `json:"offset"`
+	Verses []Verse `json:"verses"`
 }
 
-func anySlice[T any](s []T) []any {
-	out := make([]any, len(s))
-	for i, v := range s {
-		out[i] = v
-	}
-	return out
-}
-
-func (b *BibleService) Query(queryStr string, selectedBooks []string, selectedVersions []string) ([]Verse, error) {
-	if b.db == nil {
-		return nil, fmt.Errorf("database not initialized")
-	}
-
+func (b *BibleService) buildRangeSQL(queryStr string, versionID string) (string, []any, error) {
 	queryStr = strings.TrimSpace(queryStr)
 	if queryStr == "" {
-		return nil, fmt.Errorf("empty query")
-	}
-
-	if len(selectedVersions) == 0 {
-		vrows, err := b.db.Query("SELECT id FROM versions ORDER BY id")
-		if err != nil {
-			return nil, err
-		}
-		for vrows.Next() {
-			var id string
-			if err := vrows.Scan(&id); err != nil {
-				vrows.Close()
-				return nil, err
-			}
-			selectedVersions = append(selectedVersions, id)
-		}
-		vrows.Close()
-		if err := vrows.Err(); err != nil {
-			return nil, err
-		}
+		return "", nil, fmt.Errorf("empty query")
 	}
 
 	var refStart, refEnd ref
 	var hasEnd bool
 	if idx := strings.Index(queryStr, " - "); idx != -1 {
-		left := queryStr[:idx]
-		right := queryStr[idx+3:]
 		var err error
-		refStart, err = parseRef(left)
+		refStart, err = parseRef(queryStr[:idx])
 		if err != nil {
-			return nil, err
+			return "", nil, err
 		}
 		refStart.book = b.normalizeBook(refStart.book)
-		refEnd, err = parseRef(right)
+		refEnd, err = parseRef(queryStr[idx+3:])
 		if err != nil {
-			return nil, err
+			return "", nil, err
 		}
 		refEnd.book = b.normalizeBook(refEnd.book)
 		hasEnd = true
@@ -250,127 +229,123 @@ func (b *BibleService) Query(queryStr string, selectedBooks []string, selectedVe
 		var err error
 		refStart, err = parseRef(queryStr)
 		if err != nil {
-			return nil, err
+			return "", nil, err
 		}
 		refStart.book = b.normalizeBook(refStart.book)
 	}
 
-	verPH := placeholders(len(selectedVersions))
-	verParams := anySlice(selectedVersions)
-
-	bookFilterSQL := ""
-	var bookParams []any
-	if len(selectedBooks) > 0 {
-		bookFilterSQL = fmt.Sprintf(" AND v.book IN (%s)", placeholders(len(selectedBooks)))
-		bookParams = anySlice(selectedBooks)
-	}
-
-	var sqlStr string
-	var params []any
+	base := `
+		FROM verses v
+		JOIN books b ON b.abbr = v.book
+		WHERE v.version = ?`
 
 	if !hasEnd {
 		r := refStart
 		if r.chapter == 0 {
-			sqlStr = fmt.Sprintf(`
-				SELECT v.book, v.chapter, v.verse, v.version, v.text
-				FROM verses v
-				JOIN books b ON b.abbr = v.book
-				WHERE v.book = ? AND v.version IN (%s)%s
-				ORDER BY v.chapter, v.verse, v.version
-			`, verPH, bookFilterSQL)
-			params = append(params, r.book)
-			params = append(params, verParams...)
-			params = append(params, bookParams...)
-		} else if r.verseStart == 0 {
-			sqlStr = fmt.Sprintf(`
-				SELECT v.book, v.chapter, v.verse, v.version, v.text
-				FROM verses v
-				WHERE v.book = ? AND v.chapter = ? AND v.version IN (%s)%s
-				ORDER BY v.verse, v.version
-			`, verPH, bookFilterSQL)
-			params = append(params, r.book, r.chapter)
-			params = append(params, verParams...)
-			params = append(params, bookParams...)
-		} else {
-			vsEnd := r.verseEnd
-			if vsEnd == 0 {
-				vsEnd = r.verseStart
-			}
-			sqlStr = fmt.Sprintf(`
-				SELECT v.book, v.chapter, v.verse, v.version, v.text
-				FROM verses v
-				WHERE v.book = ? AND v.chapter = ? AND v.verse BETWEEN ? AND ?
-				  AND v.version IN (%s)%s
-				ORDER BY v.verse, v.version
-			`, verPH, bookFilterSQL)
-			params = append(params, r.book, r.chapter, r.verseStart, vsEnd)
-			params = append(params, verParams...)
-			params = append(params, bookParams...)
+			return base + " AND v.book = ?", []any{versionID, r.book}, nil
 		}
-	} else {
-		ordStart, err := b.bookOrd(refStart.book)
-		if err != nil {
-			return nil, err
+		if r.verseStart == 0 {
+			return base + " AND v.book = ? AND v.chapter = ?", []any{versionID, r.book, r.chapter}, nil
 		}
-		ordEnd, err := b.bookOrd(refEnd.book)
-		if err != nil {
-			return nil, err
-		}
-		chStart := refStart.chapter
-		if chStart == 0 {
-			chStart = 1
-		}
-		vsStart := refStart.verseStart
-		if vsStart == 0 {
-			vsStart = 1
-		}
-		chEnd := refEnd.chapter
-		if chEnd == 0 {
-			chEnd = 999999
-		}
-		vsEnd := refEnd.verseEnd
+		vsEnd := r.verseEnd
 		if vsEnd == 0 {
-			if refEnd.verseStart != 0 {
-				vsEnd = refEnd.verseStart
-			} else {
-				vsEnd = 999999
-			}
+			vsEnd = r.verseStart
 		}
-
-		sqlStr = fmt.Sprintf(`
-			SELECT v.book, v.chapter, v.verse, v.version, v.text
-			FROM verses v
-			JOIN books b ON b.abbr = v.book
-			WHERE v.version IN (%s)
-			  AND b.ord BETWEEN ? AND ?
-			  AND NOT (b.ord = ? AND (v.chapter < ? OR (v.chapter = ? AND v.verse < ?)))
-			  AND NOT (b.ord = ? AND (v.chapter > ? OR (v.chapter = ? AND v.verse > ?)))%s
-			ORDER BY b.ord, v.chapter, v.verse, v.version
-		`, verPH, bookFilterSQL)
-		params = append(params, verParams...)
-		params = append(params,
-			ordStart, ordEnd,
-			ordStart, chStart, chStart, vsStart,
-			ordEnd, chEnd, chEnd, vsEnd,
-		)
-		params = append(params, bookParams...)
+		return base + " AND v.book = ? AND v.chapter = ? AND v.verse BETWEEN ? AND ?",
+			[]any{versionID, r.book, r.chapter, r.verseStart, vsEnd}, nil
 	}
 
-	rows, err := b.db.Query(sqlStr, params...)
+	ordStart, err := b.bookOrd(refStart.book)
 	if err != nil {
-		return nil, fmt.Errorf("query error: %w", err)
+		return "", nil, err
+	}
+	ordEnd, err := b.bookOrd(refEnd.book)
+	if err != nil {
+		return "", nil, err
+	}
+	chStart := refStart.chapter
+	if chStart == 0 {
+		chStart = 1
+	}
+	vsStart := refStart.verseStart
+	if vsStart == 0 {
+		vsStart = 1
+	}
+	chEnd := refEnd.chapter
+	if chEnd == 0 {
+		chEnd = 999999
+	}
+	vsEnd := refEnd.verseEnd
+	if vsEnd == 0 {
+		if refEnd.verseStart != 0 {
+			vsEnd = refEnd.verseStart
+		} else {
+			vsEnd = 999999
+		}
+	}
+
+	sqlStr := base + `
+		  AND b.ord BETWEEN ? AND ?
+		  AND NOT (b.ord = ? AND (v.chapter < ? OR (v.chapter = ? AND v.verse < ?)))
+		  AND NOT (b.ord = ? AND (v.chapter > ? OR (v.chapter = ? AND v.verse > ?)))`
+	params := []any{
+		versionID,
+		ordStart, ordEnd,
+		ordStart, chStart, chStart, vsStart,
+		ordEnd, chEnd, chEnd, vsEnd,
+	}
+	return sqlStr, params, nil
+}
+
+func (b *BibleService) QueryPage(queryStr string, versionID string, offset int, limit int) (VersePage, error) {
+	if b.db == nil {
+		return VersePage{}, fmt.Errorf("database not initialized")
+	}
+	if strings.TrimSpace(versionID) == "" {
+		return VersePage{}, fmt.Errorf("empty version")
+	}
+	if offset < 0 {
+		offset = 0
+	}
+	if limit <= 0 {
+		limit = 50
+	}
+	if limit > 200 {
+		limit = 200
+	}
+
+	core, params, err := b.buildRangeSQL(queryStr, versionID)
+	if err != nil {
+		return VersePage{}, err
+	}
+
+	var total int
+	if err := b.db.QueryRow("SELECT COUNT(*) "+core, params...).Scan(&total); err != nil {
+		return VersePage{}, fmt.Errorf("count error: %w", err)
+	}
+
+	selectParams := append(append([]any{}, params...), limit, offset)
+	rows, err := b.db.Query(
+		"SELECT v.book, v.chapter, v.verse, v.version, v.text "+core+
+			" ORDER BY b.ord, v.chapter, v.verse LIMIT ? OFFSET ?",
+		selectParams...)
+	if err != nil {
+		return VersePage{}, fmt.Errorf("query error: %w", err)
 	}
 	defer rows.Close()
 
-	var verses []Verse
+	verses := []Verse{}
 	for rows.Next() {
 		var vr Verse
 		if err := rows.Scan(&vr.Book, &vr.Chapter, &vr.Verse, &vr.Version, &vr.Text); err != nil {
-			return nil, err
+			return VersePage{}, err
 		}
 		verses = append(verses, vr)
 	}
-	return verses, rows.Err()
+	if err := rows.Err(); err != nil {
+		return VersePage{}, err
+	}
+	return VersePage{Total: total, Offset: offset, Verses: verses}, nil
 }
 
 func (b *BibleService) bookOrd(abbr string) (int, error) {

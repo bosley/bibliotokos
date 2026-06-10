@@ -153,6 +153,52 @@ export class Verse {
     }
 }
 
+export class VersePage {
+    /**
+     * Creates a new VersePage instance.
+     * @param {Partial<VersePage>} [$$source = {}] - The source object to create the VersePage.
+     */
+    constructor($$source = {}) {
+        if (!("total" in $$source)) {
+            /**
+             * @member
+             * @type {number}
+             */
+            this["total"] = 0;
+        }
+        if (!("offset" in $$source)) {
+            /**
+             * @member
+             * @type {number}
+             */
+            this["offset"] = 0;
+        }
+        if (!("verses" in $$source)) {
+            /**
+             * @member
+             * @type {Verse[]}
+             */
+            this["verses"] = [];
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new VersePage instance from a string or object.
+     * @param {any} [$$source = {}]
+     * @returns {VersePage}
+     */
+    static createFrom($$source = {}) {
+        const $$createField2_0 = $$createType1;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("verses" in $$parsedSource) {
+            $$parsedSource["verses"] = $$createField2_0($$parsedSource["verses"]);
+        }
+        return new VersePage(/** @type {Partial<VersePage>} */($$parsedSource));
+    }
+}
+
 export class Version {
     /**
      * Creates a new Version instance.
@@ -194,3 +240,7 @@ export class Version {
         return new Version(/** @type {Partial<Version>} */($$parsedSource));
     }
 }
+
+// Private type creation functions
+const $$createType0 = Verse.createFrom;
+const $$createType1 = $Create.Array($$createType0);

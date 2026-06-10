@@ -1,27 +1,20 @@
 <script>
-  import { onMount } from 'svelte'
+  import { onMount, onDestroy } from 'svelte'
   import { get } from 'svelte/store'
-  import { query, versions } from '../../stores/scripture.js'
-  import { Query } from '../../../bindings/bibliotokos/services/bible/bibleservice.js'
+  import { books, versions } from '../../stores/scripture.js'
   import { GetLinkedNotes } from '../../../bindings/bibliotokos/services/notes/notesservice.js'
   import ScripturePane from './ScripturePane.svelte'
   import PaneDivider from './PaneDivider.svelte'
   import LinkedNotesBar from './LinkedNotesBar.svelte'
 
   let panes = [
-    { id: crypto.randomUUID(), versionId: '', verses: [], widthFlex: 1, loading: false }
+    { id: crypto.randomUUID(), versionId: '', widthFlex: 1 }
   ]
 
   let containerEl
   let linkedNotes = []
-
-  async function refreshLinkedNotes(q) {
-    if (!q) {
-      linkedNotes = []
-      return
-    }
-    linkedNotes = await GetLinkedNotes(q).catch(() => [])
-  }
+  let visibleRanges = new Map()
+  let debounceTimer
 
   onMount(() => {
     const unsubVersions = versions.subscribe(vs => {
@@ -34,44 +27,59 @@
         }
         return p
       })
-      if (changed && get(query)) queryAllPanes()
-    })
-
-    const unsubQuery = query.subscribe(q => {
-      if (q) {
-        queryAllPanes()
-      } else {
-        panes = panes.map(p => ({ ...p, verses: [], loading: false }))
-      }
-      refreshLinkedNotes(q)
+      if (changed) panes = [...panes]
     })
 
     return () => {
       unsubVersions()
-      unsubQuery()
     }
   })
 
-  function handleWindowFocus() {
-    refreshLinkedNotes(get(query))
+  onDestroy(() => {
+    clearTimeout(debounceTimer)
+  })
+
+  function bookOrd(abbr) {
+    const b = get(books).find(bk => bk.abbr === abbr)
+    return b ? b.ord : 0
   }
 
-  async function queryPane(index) {
-    const pane = panes[index]
-    if (!pane || !pane.versionId || !$query) return
-    panes[index] = { ...pane, loading: true }
-    panes = [...panes]
-    try {
-      const verses = await Query($query, [], [pane.versionId])
-      panes[index] = { ...panes[index], verses: verses ?? [], loading: false }
-    } catch {
-      panes[index] = { ...panes[index], verses: [], loading: false }
+  function versePos(v) {
+    return bookOrd(v.book) * 1_000_000 + v.chapter * 1_000 + v.verse
+  }
+
+  function handleVisibleRange(paneId, detail) {
+    if (detail) {
+      visibleRanges.set(paneId, detail)
+    } else {
+      visibleRanges.delete(paneId)
     }
-    panes = [...panes]
+    scheduleLinkedNotesRefresh()
   }
 
-  function queryAllPanes() {
-    panes.forEach((_, i) => queryPane(i))
+  function scheduleLinkedNotesRefresh() {
+    clearTimeout(debounceTimer)
+    debounceTimer = setTimeout(refreshLinkedNotes, 300)
+  }
+
+  async function refreshLinkedNotes() {
+    const ranges = [...visibleRanges.values()]
+    if (ranges.length === 0) {
+      linkedNotes = []
+      return
+    }
+    let first = ranges[0].first
+    let last = ranges[0].last
+    for (const r of ranges.slice(1)) {
+      if (versePos(r.first) < versePos(first)) first = r.first
+      if (versePos(r.last) > versePos(last)) last = r.last
+    }
+    const ref = `${first.book} ${first.chapter}:${first.verse} - ${last.book} ${last.chapter}:${last.verse}`
+    linkedNotes = await GetLinkedNotes(ref).catch(() => [])
+  }
+
+  function handleWindowFocus() {
+    refreshLinkedNotes()
   }
 
   function addPane(afterIndex) {
@@ -79,30 +87,26 @@
     const newPane = {
       id: crypto.randomUUID(),
       versionId: defaultVersionId,
-      verses: [],
       widthFlex: 1,
-      loading: false,
     }
     panes = [
       ...panes.slice(0, afterIndex + 1),
       newPane,
       ...panes.slice(afterIndex + 1),
     ]
-    if ($query) {
-      const newIndex = afterIndex + 1
-      queryPane(newIndex)
-    }
   }
 
   function removePane(index) {
     if (panes.length <= 1) return
+    const removed = panes[index]
     panes = panes.filter((_, i) => i !== index)
+    visibleRanges.delete(removed.id)
+    scheduleLinkedNotesRefresh()
   }
 
   function changeVersion(index, versionId) {
     panes[index] = { ...panes[index], versionId }
     panes = [...panes]
-    if ($query) queryPane(index)
   }
 
   function startResize(leftIndex, startX) {
@@ -141,6 +145,7 @@
         on:addpane={() => addPane(i)}
         on:removepane={() => removePane(i)}
         on:versionchange={e => changeVersion(i, e.detail)}
+        on:visiblerange={e => handleVisibleRange(pane.id, e.detail)}
       />
       {#if i < panes.length - 1}
         <PaneDivider on:dragstart={e => startResize(i, e.detail)} />

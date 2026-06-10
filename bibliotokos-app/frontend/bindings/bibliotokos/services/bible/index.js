@@ -11,5 +11,6 @@ export {
     Book,
     PassageRange,
     Verse,
+    VersePage,
     Version
 } from "./models.js";

@@ -37,13 +37,14 @@ export function Init() {
 
 /**
  * @param {string} queryStr
- * @param {string[]} selectedBooks
- * @param {string[]} selectedVersions
- * @returns {$CancellablePromise<$models.Verse[]>}
+ * @param {string} versionID
+ * @param {number} offset
+ * @param {number} limit
+ * @returns {$CancellablePromise<$models.VersePage>}
  */
-export function Query(queryStr, selectedBooks, selectedVersions) {
-    return $Call.ByID(675788687, queryStr, selectedBooks, selectedVersions).then(/** @type {($result: any) => any} */(($result) => {
-        return $$createType5($result);
+export function QueryPage(queryStr, versionID, offset, limit) {
+    return $Call.ByID(4074692340, queryStr, versionID, offset, limit).then(/** @type {($result: any) => any} */(($result) => {
+        return $$createType4($result);
     }));
 }
 
@@ -53,7 +54,7 @@ export function Query(queryStr, selectedBooks, selectedVersions) {
  */
 export function ResolveRange(refStr) {
     return $Call.ByID(1117089036, refStr).then(/** @type {($result: any) => any} */(($result) => {
-        return $$createType6($result);
+        return $$createType5($result);
     }));
 }
 
@@ -62,6 +63,5 @@ const $$createType0 = $models.Book.createFrom;
 const $$createType1 = $Create.Array($$createType0);
 const $$createType2 = $models.Version.createFrom;
 const $$createType3 = $Create.Array($$createType2);
-const $$createType4 = $models.Verse.createFrom;
-const $$createType5 = $Create.Array($$createType4);
-const $$createType6 = $models.PassageRange.createFrom;
+const $$createType4 = $models.VersePage.createFrom;
+const $$createType5 = $models.PassageRange.createFrom;
