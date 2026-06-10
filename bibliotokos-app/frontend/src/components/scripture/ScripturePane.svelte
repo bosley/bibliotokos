@@ -15,6 +15,7 @@
   const KEEP_RADIUS = 3
   const SETTLE_MS = 120
 
+  let verseListComp
   let chunks = []
   let loading = false
   let token = 0
@@ -115,6 +116,14 @@
     }
   }
 
+  export function getAnchor() {
+    return verseListComp?.getAnchor() ?? null
+  }
+
+  export function scrollToAnchor(anchor) {
+    verseListComp?.scrollToAnchor(anchor)
+  }
+
   function emitVisibleRange() {
     const vis = [...visibleSet].filter(
       i => i >= 0 && i < chunks.length && chunks[i].verses?.length
@@ -140,11 +149,13 @@
     on:removepane={() => dispatch('removepane')}
   />
   <VerseList
+    bind:this={verseListComp}
     {chunks}
     {loading}
     query={$queryStore}
     generation={token}
     on:visiblechunks={handleVisibleChunks}
+    on:scrollsync
   />
 </div>
 

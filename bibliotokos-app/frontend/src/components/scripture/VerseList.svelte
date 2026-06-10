@@ -18,6 +18,8 @@
   let pendingScrollReset = false
   let anchorIndex = -1
   let anchorOffset = 0
+  let suppress = 0
+  let suppressAt = 0
 
   $: if (generation !== lastGeneration) {
     lastGeneration = generation
@@ -71,12 +73,93 @@
     }
   }
 
-  function chunkTop(el) {
+  function elTop(el) {
     return (
       el.getBoundingClientRect().top -
       listEl.getBoundingClientRect().top +
       listEl.scrollTop
     )
+  }
+
+  function setScrollTop(target) {
+    const max = Math.max(0, listEl.scrollHeight - listEl.clientHeight)
+    const t = Math.max(0, Math.min(target, max))
+    if (Math.abs(listEl.scrollTop - t) <= 1) return
+    suppress++
+    suppressAt = performance.now()
+    listEl.scrollTop = t
+  }
+
+  function handleScroll() {
+    if (suppress > 0) {
+      if (performance.now() - suppressAt < 300) {
+        suppress--
+        return
+      }
+      suppress = 0
+    }
+    dispatch('scrollsync', getAnchor())
+  }
+
+  export function getAnchor() {
+    if (!listEl || chunks.length === 0) return null
+    const st = listEl.scrollTop
+    let base = 0
+    for (let i = 0; i < chunks.length; i++) {
+      const count = chunks[i].count
+      const el = chunkEls[i]
+      if (!el || !el.isConnected) {
+        base += count
+        continue
+      }
+      const top = elTop(el)
+      const h = el.offsetHeight
+      if (top + h <= st) {
+        base += count
+        continue
+      }
+      if (chunks[i].verses) {
+        const kids = el.children
+        for (let j = 0; j < kids.length; j++) {
+          const kt = elTop(kids[j])
+          const kh = kids[j].offsetHeight
+          if (kt + kh > st) {
+            return {
+              index: base + j,
+              fraction: kh > 0 ? Math.max(0, (st - kt) / kh) : 0,
+            }
+          }
+        }
+        return { index: base + count - 1, fraction: 0 }
+      }
+      const within = h > 0 ? ((st - top) / h) * count : 0
+      const j = Math.max(0, Math.min(count - 1, Math.floor(within)))
+      return { index: base + j, fraction: Math.max(0, within - j) }
+    }
+    return null
+  }
+
+  export function scrollToAnchor(anchor) {
+    if (!listEl || !anchor || chunks.length === 0) return
+    let base = 0
+    for (let i = 0; i < chunks.length; i++) {
+      const count = chunks[i].count
+      if (anchor.index >= base + count) {
+        base += count
+        continue
+      }
+      const el = chunkEls[i]
+      if (!el || !el.isConnected) return
+      const j = anchor.index - base
+      if (chunks[i].verses && el.children.length > j) {
+        const kid = el.children[j]
+        setScrollTop(elTop(kid) + anchor.fraction * kid.offsetHeight)
+      } else {
+        const per = count > 0 ? el.offsetHeight / count : 0
+        setScrollTop(elTop(el) + (j + anchor.fraction) * per)
+      }
+      return
+    }
   }
 
   beforeUpdate(() => {
@@ -86,9 +169,9 @@
     for (let i = 0; i < chunkEls.length; i++) {
       const el = chunkEls[i]
       if (!el || !el.isConnected) continue
-      if (chunkTop(el) + el.offsetHeight > st) {
+      if (elTop(el) + el.offsetHeight > st) {
         anchorIndex = i
-        anchorOffset = st - chunkTop(el)
+        anchorOffset = st - elTop(el)
         break
       }
     }
@@ -104,17 +187,14 @@
     }
     if (pendingScrollReset) {
       pendingScrollReset = false
-      listEl.scrollTop = 0
+      setScrollTop(0)
       return
     }
     if (anchorIndex < 0) return
     const el = chunkEls[anchorIndex]
     if (!el || !el.isConnected) return
     const maxOffset = Math.max(0, el.offsetHeight - 1)
-    const target = chunkTop(el) + Math.min(anchorOffset, maxOffset)
-    if (Math.abs(listEl.scrollTop - target) > 1) {
-      listEl.scrollTop = target
-    }
+    setScrollTop(elTop(el) + Math.min(anchorOffset, maxOffset))
   })
 
   onDestroy(() => {
@@ -122,7 +202,7 @@
   })
 </script>
 
-<div class="verse-list" bind:this={listEl}>
+<div class="verse-list" bind:this={listEl} on:scroll={handleScroll}>
   {#if loading}
     <div class="state-msg">Loading…</div>
   {:else if !query}

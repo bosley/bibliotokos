@@ -1,7 +1,7 @@
 <script>
   import { onMount, onDestroy } from 'svelte'
   import { get } from 'svelte/store'
-  import { books, versions } from '../../stores/scripture.js'
+  import { books, versions, scrollLock } from '../../stores/scripture.js'
   import { GetLinkedNotes } from '../../../bindings/bibliotokos/services/notes/notesservice.js'
   import ScripturePane from './ScripturePane.svelte'
   import PaneDivider from './PaneDivider.svelte'
@@ -15,6 +15,40 @@
   let linkedNotes = []
   let visibleRanges = new Map()
   let debounceTimer
+  let paneRefs = {}
+  let lastScrolledId = null
+  let syncRafPending = false
+
+  $: if ($scrollLock) alignOnLock()
+
+  function masterId() {
+    if (lastScrolledId && paneRefs[lastScrolledId]) return lastScrolledId
+    return panes[0]?.id ?? null
+  }
+
+  function alignOnLock() {
+    const srcId = masterId()
+    if (srcId) requestAnimationFrame(() => syncFrom(srcId))
+  }
+
+  function syncFrom(srcId) {
+    const anchor = paneRefs[srcId]?.getAnchor()
+    if (!anchor) return
+    for (const p of panes) {
+      if (p.id === srcId) continue
+      paneRefs[p.id]?.scrollToAnchor(anchor)
+    }
+  }
+
+  function handleScrollSync(paneId, anchor) {
+    lastScrolledId = paneId
+    if (!anchor || !$scrollLock || syncRafPending) return
+    syncRafPending = true
+    requestAnimationFrame(() => {
+      syncRafPending = false
+      syncFrom(lastScrolledId)
+    })
+  }
 
   onMount(() => {
     const unsubVersions = versions.subscribe(vs => {
@@ -55,6 +89,15 @@
       visibleRanges.delete(paneId)
     }
     scheduleLinkedNotesRefresh()
+    if (detail && $scrollLock) {
+      const srcId = masterId()
+      if (srcId && srcId !== paneId) {
+        requestAnimationFrame(() => {
+          const anchor = paneRefs[srcId]?.getAnchor()
+          if (anchor) paneRefs[paneId]?.scrollToAnchor(anchor)
+        })
+      }
+    }
   }
 
   function scheduleLinkedNotesRefresh() {
@@ -140,12 +183,14 @@
   <div class="panes" bind:this={containerEl}>
     {#each panes as pane, i (pane.id)}
       <ScripturePane
+        bind:this={paneRefs[pane.id]}
         {pane}
         canRemove={panes.length > 1}
         on:addpane={() => addPane(i)}
         on:removepane={() => removePane(i)}
         on:versionchange={e => changeVersion(i, e.detail)}
         on:visiblerange={e => handleVisibleRange(pane.id, e.detail)}
+        on:scrollsync={e => handleScrollSync(pane.id, e.detail)}
       />
       {#if i < panes.length - 1}
         <PaneDivider on:dragstart={e => startResize(i, e.detail)} />
