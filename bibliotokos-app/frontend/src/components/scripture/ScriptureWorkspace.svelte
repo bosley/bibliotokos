@@ -1,4 +1,6 @@
 <script>
+  import { onMount } from 'svelte'
+  import { get } from 'svelte/store'
   import { query, versions } from '../../stores/scripture.js'
   import { Query } from '../../../bindings/bibliotokos/services/bible/bibleservice.js'
   import ScripturePane from './ScripturePane.svelte'
@@ -10,14 +12,33 @@
 
   let containerEl
 
-  $: if ($versions.length > 0 && panes.some(p => !p.versionId)) {
-    panes = panes.map(p => ({ ...p, versionId: p.versionId || $versions[0].id }))
-    if ($query) queryAllPanes()
-  }
+  onMount(() => {
+    const unsubVersions = versions.subscribe(vs => {
+      if (vs.length === 0) return
+      let changed = false
+      panes = panes.map(p => {
+        if (!p.versionId) {
+          changed = true
+          return { ...p, versionId: vs[0].id }
+        }
+        return p
+      })
+      if (changed && get(query)) queryAllPanes()
+    })
 
-  $: if ($query) {
-    queryAllPanes()
-  }
+    const unsubQuery = query.subscribe(q => {
+      if (q) {
+        queryAllPanes()
+      } else {
+        panes = panes.map(p => ({ ...p, verses: [], loading: false }))
+      }
+    })
+
+    return () => {
+      unsubVersions()
+      unsubQuery()
+    }
+  })
 
   async function queryPane(index) {
     const pane = panes[index]
