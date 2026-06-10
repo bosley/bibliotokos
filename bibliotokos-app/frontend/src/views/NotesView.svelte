@@ -154,7 +154,7 @@
       }
       passageError = ''
     } catch (err) {
-      passageError = String(err?.message ?? err ?? 'Invalid reference')
+      passageError = 'Unknown passage'
     }
   }
 
