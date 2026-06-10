@@ -3,10 +3,18 @@
 
   let copied = null
 
+  function stripHtml(html) {
+    if (!html) return ''
+    const doc = new DOMParser().parseFromString(html, 'text/html')
+    return doc.body.textContent || ''
+  }
+
+  $: plainText = stripHtml(verse.text)
+
   function copy(type) {
-    const value = type === 'ref' 
+    const value = type === 'ref'
       ? `${verse.book} ${verse.chapter}:${verse.verse}`
-      : verse.text
+      : plainText
     navigator.clipboard.writeText(value)
     copied = type
     setTimeout(() => copied = null, 800)
@@ -27,7 +35,7 @@
     >txt</button>
   </div>
   <span class="ref">{verse.book} {verse.chapter}:{verse.verse}</span>
-  <span class="text">{verse.text}</span>
+  <span class="text">{@html verse.text}</span>
 </div>
 
 <style>
