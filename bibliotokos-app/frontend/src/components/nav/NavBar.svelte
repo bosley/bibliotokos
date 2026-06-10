@@ -67,12 +67,15 @@
     <ThemeToggle />
     <button class="icon-btn" on:click={openInfo} title="Info" aria-label="Info">
       <svg viewBox="0 0 16 16" fill="currentColor" width="16" height="16">
-        <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0-8a.75.75 0 0 0-.75.75v3.5a.75.75 0 0 0 1.5 0v-3.5A.75.75 0 0 0 8 7zm0-3a1 1 0 1 0 0-2 1 1 0 0 0 0 2z"/>
+        <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+        <path d="M8.93 6.588-.84-.84.84-.84.84.84-.84.84z"/>
+        <path d="M8 10.5a.5.5 0 0 1-.5-.5v-3a.5.5 0 0 1 1 0v3a.5.5 0 0 1-.5.5z"/>
       </svg>
     </button>
     <button class="icon-btn" on:click={openHelp} title="Help" aria-label="Help">
       <svg viewBox="0 0 16 16" fill="currentColor" width="16" height="16">
-        <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zM8 4.5a2.5 2.5 0 0 0-2.5 2.5.75.75 0 0 0 1.5 0A1 1 0 0 1 8 6a1 1 0 0 1 1 1 1.5 1.5 0 0 1-1.5 1.5v1.25a.75.75 0 0 0 1.5 0V9A3 3 0 0 0 8 4.5zM8 12a1 1 0 1 0 0-2 1 1 0 0 0 0 2z"/>
+        <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zM8 1a6 6 0 0 0-6 6 6 6 0 0 0 3.5 5.4.75.75 0 1 0 .75-1.3A4.5 4.5 0 1 1 8 3.5 4.5 4.5 0 0 1 11.5 8a.75.75 0 0 0 1.5 0A6 6 0 0 0 8 1z"/>
+        <path d="M8 12a1 1 0 1 0 0-2 1 1 0 0 0 0 2z"/>
       </svg>
     </button>
   </div>
