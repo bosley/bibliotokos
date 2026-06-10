@@ -1,15 +1,15 @@
 {
 	"fixed": {
-		"file_version": "0.1.0"
+		"file_version": "0.0.1"
 	},
 	"info": {
 		"0000": {
-			"ProductVersion": "0.1.0",
-			"CompanyName": "My Company",
-			"FileDescription": "A bibliotokos-app application",
-			"LegalCopyright": "© 2026, My Company",
-			"ProductName": "My Product",
-			"Comments": "This is a comment"
+			"ProductVersion": "0.0.1",
+			"CompanyName": "Insula Labs, LLC",
+			"FileDescription": "BiblioTokos is a desktop application for managing your study",
+			"LegalCopyright": "(c) 2026, Insula Labs, LLC",
+			"ProductName": "BiblioTokos",
+			"Comments": "BiblioTokos is a desktop application for managing your study"
 		}
 	}
 }

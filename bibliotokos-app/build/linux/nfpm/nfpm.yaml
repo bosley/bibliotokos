@@ -6,12 +6,12 @@
 name: "bibliotokos-app"
 arch: ${GOARCH}
 platform: "linux"
-version: "0.1.0"
+version: "0.0.1"
 section: "default"
 priority: "extra"
 maintainer: ${GIT_COMMITTER_NAME} <${GIT_COMMITTER_EMAIL}>
-description: "A bibliotokos-app application"
-vendor: "My Company"
+description: "BiblioTokos is a desktop application for managing your study"
+vendor: "Insula Labs, LLC"
 homepage: "https://wails.io"
 license: "MIT"
 release: "1"
