@@ -1,51 +1,28 @@
 <script>
-import {Events} from "@wailsio/runtime";
-import {GreetService} from "../bindings/bibliotokos/services/greet";
+  import { onMount } from 'svelte'
+  import { theme } from './stores/theme.js'
+  import { versions, books } from './stores/scripture.js'
+  import { GetTheme } from '../bindings/bibliotokos/services/system/systemservice.js'
+  import { GetVersions, GetBooks } from '../bindings/bibliotokos/services/bible/bibleservice.js'
+  import ScriptureView from './views/ScriptureView.svelte'
+  import NotesView from './views/NotesView.svelte'
 
-let name = '';
-let result = 'Please enter your name below 👇';
-let time = 'Listening for Time event...';
+  const view = new URLSearchParams(window.location.search).get('view') ?? 'scripture'
 
-const doGreet = () => {
-  let localName = name;
-  if (!localName) {
-    localName = 'anonymous';
-  }
-  GreetService.Greet(localName).then((resultValue) => {
-    result = resultValue;
-  }).catch((err) => {
-    console.log(err);
-  });
-}
-
-Events.On('time', (timeValue) => {
-  time = timeValue.data;
-});
+  onMount(async () => {
+    const [t, v, b] = await Promise.all([
+      GetTheme().catch(() => 'dark'),
+      GetVersions().catch(() => []),
+      GetBooks().catch(() => []),
+    ])
+    theme.set(t)
+    versions.set(v)
+    books.set(b)
+  })
 </script>
 
-<div class="container">
-  <div>
-    <span data-wml-openURL="https://wails.io">
-      <img src="/wails.png" class="logo" alt="Wails logo"/>
-    </span>
-    <span data-wml-openURL="https://svelte.dev">
-      <img src="/svelte.svg" class="logo svelte" alt="Svelte logo"/>
-    </span>
-  </div>
-  <h1>Wails + Svelte</h1>
-  <div aria-label="result" class="result">{result}</div>
-  <div class="card">
-    <div class="input-box">
-      <input aria-label="input" class="input" bind:value={name} type="text" autocomplete="off"/>
-      <button aria-label="greet-btn" class="btn" on:click={doGreet}>Greet</button>
-    </div>
-  </div>
-  <div class="footer">
-    <div><p>Click on the Wails logo to learn more</p></div>
-    <div><p>{time}</p></div>
-  </div>
-</div>
-
-<style>
-  /* Put your standard CSS here */
-</style>
+{#if view === 'notes'}
+  <NotesView />
+{:else}
+  <ScriptureView />
+{/if}
