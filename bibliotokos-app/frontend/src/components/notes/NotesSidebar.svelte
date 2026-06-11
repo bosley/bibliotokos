@@ -71,7 +71,7 @@
 
 <style>
   .sidebar {
-    width: var(--sidebar-w, 260px);
+    width: var(--sidebar-w, 200px);
     flex-shrink: 0;
     display: flex;
     flex-direction: column;
@@ -161,7 +161,7 @@
   }
 
   .tag-delete {
-    display: none;
+    display: flex;
     align-items: center;
     justify-content: center;
     width: 16px;
@@ -176,12 +176,8 @@
     background: transparent;
   }
 
-  .tag-pill-wrap:hover .tag-delete {
-    display: flex;
-  }
-
   .tag-delete:hover {
-    color: var(--text);
-    background: color-mix(in srgb, currentColor 15%, transparent);
+    color: #e5534b;
+    background: color-mix(in srgb, #e5534b 15%, transparent);
   }
 </style>

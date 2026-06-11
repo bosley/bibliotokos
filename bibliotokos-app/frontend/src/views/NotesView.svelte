@@ -24,7 +24,7 @@
   let saveTimer = null
   let passageError = ''
 
-  let sidebarWidth = 260
+  let sidebarWidth = 200
   let collapsed = false
 
   onMount(async () => {

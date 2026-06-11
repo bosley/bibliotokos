@@ -1,5 +1,11 @@
 <script>
   import { createEventDispatcher, tick } from 'svelte'
+  import { get } from 'svelte/store'
+  import Editor from '@toast-ui/editor'
+  import '@toast-ui/editor/dist/toastui-editor.css'
+  import '@toast-ui/editor/dist/theme/toastui-editor-dark.css'
+  import { theme } from '../../stores/theme.js'
+
   const dispatch = createEventDispatcher()
 
   export let note = null
@@ -8,7 +14,57 @@
   export let passageError = ''
 
   let title = note?.title ?? ''
-  let content = note?.content ?? ''
+
+  let editor = null
+  let editorRoot = null
+
+  function interceptSave(e) {
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') {
+      e.preventDefault()
+      e.stopPropagation()
+      dispatch('save')
+    }
+  }
+
+  function initEditor(el) {
+    el.addEventListener('keydown', interceptSave, { capture: true })
+    editor = new Editor({
+      el,
+      initialValue: note?.content ?? '',
+      initialEditType: 'markdown',
+      previewStyle: 'tab',
+      height: '100%',
+      usageStatistics: false,
+      autofocus: false,
+      placeholder: 'Start writing…',
+      theme: get(theme) === 'dark' ? 'dark' : 'default',
+      toolbarItems: [
+        ['heading', 'bold', 'italic', 'strike'],
+        ['hr', 'quote'],
+        ['ul', 'ol', 'task'],
+        ['table', 'link'],
+        ['code', 'codeblock'],
+      ],
+      events: {
+        change: () => dispatch('change', { content: editor.getMarkdown() }),
+      },
+    })
+    editorRoot = el
+    return {
+      destroy() {
+        el.removeEventListener('keydown', interceptSave, { capture: true })
+        editor?.destroy()
+        editor = null
+        editorRoot = null
+      },
+    }
+  }
+
+  $: if (editorRoot) {
+    editorRoot
+      .querySelector('.toastui-editor-defaultUI')
+      ?.classList.toggle('toastui-editor-dark', $theme === 'dark')
+  }
 
   let tagMenuOpen = false
   let newTagInput = ''
@@ -200,12 +256,7 @@
         </div>
       </div>
     </div>
-    <textarea
-      class="content-area"
-      bind:value={content}
-      placeholder="Start writing…"
-      on:input={() => dispatch('change', { content })}
-    ></textarea>
+    <div class="content-area" use:initEditor></div>
   </div>
 {:else}
   <div class="empty-state">
@@ -511,19 +562,36 @@
 
   .content-area {
     flex: 1;
-    padding: 20px 28px;
-    font-size: 15px;
-    line-height: 1.75;
-    font-family: var(--font-reading);
-    color: var(--text);
-    background: transparent;
-    outline: none;
-    resize: none;
-    width: 100%;
+    overflow: hidden;
+    min-height: 0;
   }
 
-  .content-area::placeholder {
-    color: var(--text-muted);
+  .content-area :global(.toastui-editor-defaultUI) {
+    border: none;
+    border-radius: 0;
+  }
+
+  .content-area :global(.toastui-editor-defaultUI-toolbar) {
+    background: var(--bg-surface);
+    border-bottom: 1px solid var(--border);
+    border-radius: 0;
+  }
+
+  .content-area :global(.toastui-editor-main),
+  .content-area :global(.toastui-editor-md-container),
+  .content-area :global(.toastui-editor-ww-container),
+  .content-area :global(.toastui-editor-md-preview) {
+    background: transparent;
+  }
+
+  .content-area :global(.toastui-editor-mode-switch) {
+    background: transparent;
+    border-top: 1px solid var(--border);
+  }
+
+  .content-area :global(.toastui-editor-md-tab-container) {
+    background: var(--bg-surface);
+    border-bottom-color: var(--border);
   }
 
   .empty-state {
