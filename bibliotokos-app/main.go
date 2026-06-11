@@ -7,6 +7,7 @@ import (
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 
+	"bibliotokos/platform"
 	"bibliotokos/services/bible"
 	"bibliotokos/services/notes"
 	"bibliotokos/services/system"
@@ -31,7 +32,7 @@ var assets embed.FS
 
 func main() {
 	bibleService := &bible.BibleService{}
-	if err := bibleService.Init(); err != nil {
+	if err := bibleService.Init(platform.GetInstallAppName()); err != nil {
 		log.Fatal(err)
 	}
 

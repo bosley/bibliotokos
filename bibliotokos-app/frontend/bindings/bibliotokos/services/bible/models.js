@@ -48,6 +48,74 @@ export class Book {
     }
 }
 
+/**
+ * @readonly
+ * @enum {number}
+ */
+export const Collection = {
+    /**
+     * The Go zero value for the underlying type of the enum.
+     */
+    $zero: 0,
+
+    OldTestament: 0,
+    NewTestament: 1,
+    Apocrypha: 2,
+};
+
+export class MultiVersionVerse {
+    /**
+     * Creates a new MultiVersionVerse instance.
+     * @param {Partial<MultiVersionVerse>} [$$source = {}] - The source object to create the MultiVersionVerse.
+     */
+    constructor($$source = {}) {
+        if (!("book" in $$source)) {
+            /**
+             * @member
+             * @type {string}
+             */
+            this["book"] = "";
+        }
+        if (!("chapter" in $$source)) {
+            /**
+             * @member
+             * @type {number}
+             */
+            this["chapter"] = 0;
+        }
+        if (!("verse" in $$source)) {
+            /**
+             * @member
+             * @type {number}
+             */
+            this["verse"] = 0;
+        }
+        if (!("texts" in $$source)) {
+            /**
+             * @member
+             * @type {{ [_ in string]?: string }}
+             */
+            this["texts"] = {};
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new MultiVersionVerse instance from a string or object.
+     * @param {any} [$$source = {}]
+     * @returns {MultiVersionVerse}
+     */
+    static createFrom($$source = {}) {
+        const $$createField3_0 = $$createType0;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("texts" in $$parsedSource) {
+            $$parsedSource["texts"] = $$createField3_0($$parsedSource["texts"]);
+        }
+        return new MultiVersionVerse(/** @type {Partial<MultiVersionVerse>} */($$parsedSource));
+    }
+}
+
 export class PassageRange {
     /**
      * Creates a new PassageRange instance.
@@ -190,7 +258,7 @@ export class VersePage {
      * @returns {VersePage}
      */
     static createFrom($$source = {}) {
-        const $$createField2_0 = $$createType1;
+        const $$createField2_0 = $$createType2;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("verses" in $$parsedSource) {
             $$parsedSource["verses"] = $$createField2_0($$parsedSource["verses"]);
@@ -242,5 +310,6 @@ export class Version {
 }
 
 // Private type creation functions
-const $$createType0 = Verse.createFrom;
-const $$createType1 = $Create.Array($$createType0);
+const $$createType0 = $Create.Map($Create.Any, $Create.Any);
+const $$createType1 = Verse.createFrom;
+const $$createType2 = $Create.Array($$createType1);

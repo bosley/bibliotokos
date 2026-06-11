@@ -1,11 +1,11 @@
 package bible
 
 import (
-	"bibliotokos/platform"
 	"database/sql"
 	_ "embed"
 	"errors"
 	"fmt"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -59,7 +59,7 @@ var extraAliases = map[string]string{
 	"3john": "Jo3", "1jn": "Jo1", "2jn": "Jo2", "3jn": "Jo3",
 	"apoc": "Rev", "mk": "Mar", "lk": "Luk", "jn": "Joh", "mt": "Mat",
 	"matt": "Mat",
-	"ac": "Act", "gn": "Gen", "dt": "Deu", "deut": "Deu",
+	"ac":   "Act", "gn": "Gen", "dt": "Deu", "deut": "Deu",
 	"ex": "Exo", "exod": "Exo", "lv": "Lev", "nm": "Num",
 	"jsh": "Jos", "jg": "Jdg", "jdgs": "Jdg", "ru": "Rut",
 	"ezk": "Eze", "zeph": "Zep", "obad": "Oba",
@@ -143,8 +143,8 @@ func parseRef(token string) (ref, error) {
 	return r, nil
 }
 
-func (b *BibleService) Init() error {
-	dbDir := filepath.Join(xdg.DataHome, platform.GetInstallAppName())
+func (b *BibleService) Init(targetName string) error {
+	dbDir := filepath.Join(xdg.DataHome, targetName)
 	if err := os.MkdirAll(dbDir, 0755); err != nil {
 		return fmt.Errorf("create data dir: %w", err)
 	}
@@ -346,6 +346,303 @@ func (b *BibleService) QueryPage(queryStr string, versionID string, offset int, 
 		return VersePage{}, err
 	}
 	return VersePage{Total: total, Offset: offset, Verses: verses}, nil
+}
+
+type Collection int
+
+const (
+	OldTestament Collection = iota
+	NewTestament
+	Apocrypha
+)
+
+func (b *BibleService) HasCollection(versionID string, col Collection) (bool, error) {
+	var minOrd, maxOrd int
+	switch col {
+	case OldTestament:
+		minOrd, maxOrd = 1, 39
+	case NewTestament:
+		minOrd, maxOrd = 40, 66
+	case Apocrypha:
+		minOrd, maxOrd = 100, 999
+	}
+	var exists bool
+	err := b.db.QueryRow(`
+		SELECT EXISTS(
+			SELECT 1 FROM verses v
+			JOIN books b ON b.abbr = v.book
+			WHERE v.version = ? AND b.ord BETWEEN ? AND ?
+		)`,
+		versionID, minOrd, maxOrd,
+	).Scan(&exists)
+	if err != nil {
+		return false, err
+	}
+	return exists, nil
+}
+
+func (b *BibleService) Search(versionID string, book string, phrase string, offset int, limit int) (VersePage, error) {
+	if b.db == nil {
+		return VersePage{}, fmt.Errorf("database not initialized")
+	}
+	if strings.TrimSpace(versionID) == "" {
+		return VersePage{}, fmt.Errorf("empty version")
+	}
+	if strings.TrimSpace(phrase) == "" {
+		return VersePage{}, fmt.Errorf("empty search phrase")
+	}
+	if offset < 0 {
+		offset = 0
+	}
+	if limit <= 0 {
+		limit = 50
+	}
+	if limit > 200 {
+		limit = 200
+	}
+
+	pattern := "%" + strings.ReplaceAll(phrase, "%", "\\%") + "%"
+
+	var (
+		countSQL  string
+		selectSQL string
+		params    []any
+	)
+
+	if book == "" {
+		countSQL = `
+			SELECT COUNT(*) FROM verses v
+			JOIN books b ON b.abbr = v.book
+			WHERE v.version = ? AND v.text LIKE ? ESCAPE '\'`
+		selectSQL = `
+			SELECT v.book, v.chapter, v.verse, v.version, v.text
+			FROM verses v
+			JOIN books b ON b.abbr = v.book
+			WHERE v.version = ? AND v.text LIKE ? ESCAPE '\'
+			ORDER BY b.ord, v.chapter, v.verse
+			LIMIT ? OFFSET ?`
+		params = []any{versionID, pattern}
+	} else {
+		normalizedBook := b.normalizeBook(book)
+		countSQL = `
+			SELECT COUNT(*) FROM verses v
+			JOIN books b ON b.abbr = v.book
+			WHERE v.version = ? AND v.book = ? AND v.text LIKE ? ESCAPE '\'`
+		selectSQL = `
+			SELECT v.book, v.chapter, v.verse, v.version, v.text
+			FROM verses v
+			JOIN books b ON b.abbr = v.book
+			WHERE v.version = ? AND v.book = ? AND v.text LIKE ? ESCAPE '\'
+			ORDER BY b.ord, v.chapter, v.verse
+			LIMIT ? OFFSET ?`
+		params = []any{versionID, normalizedBook, pattern}
+	}
+
+	var total int
+	if err := b.db.QueryRow(countSQL, params...).Scan(&total); err != nil {
+		return VersePage{}, fmt.Errorf("search count error: %w", err)
+	}
+
+	rows, err := b.db.Query(selectSQL, append(append([]any{}, params...), limit, offset)...)
+	if err != nil {
+		return VersePage{}, fmt.Errorf("search error: %w", err)
+	}
+	defer rows.Close()
+
+	verses := []Verse{}
+	for rows.Next() {
+		var vr Verse
+		if err := rows.Scan(&vr.Book, &vr.Chapter, &vr.Verse, &vr.Version, &vr.Text); err != nil {
+			return VersePage{}, err
+		}
+		verses = append(verses, vr)
+	}
+	if err := rows.Err(); err != nil {
+		return VersePage{}, err
+	}
+	return VersePage{Total: total, Offset: offset, Verses: verses}, nil
+}
+
+func (b *BibleService) GetChapterCount(versionID string, book string) (int, error) {
+	if b.db == nil {
+		return 0, fmt.Errorf("database not initialized")
+	}
+	normalizedBook := b.normalizeBook(book)
+	var count int
+	err := b.db.QueryRow(`
+		SELECT COUNT(DISTINCT chapter) FROM verses
+		WHERE version = ? AND book = ?`,
+		versionID, normalizedBook,
+	).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("chapter count error: %w", err)
+	}
+	return count, nil
+}
+
+func (b *BibleService) GetVerseCount(versionID string, book string, chapter int) (int, error) {
+	if b.db == nil {
+		return 0, fmt.Errorf("database not initialized")
+	}
+	normalizedBook := b.normalizeBook(book)
+	var count int
+	err := b.db.QueryRow(`
+		SELECT COUNT(*) FROM verses
+		WHERE version = ? AND book = ? AND chapter = ?`,
+		versionID, normalizedBook, chapter,
+	).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("verse count error: %w", err)
+	}
+	return count, nil
+}
+
+func (b *BibleService) RandomVerse(versionID string, book string) (Verse, error) {
+	if b.db == nil {
+		return Verse{}, fmt.Errorf("database not initialized")
+	}
+	if strings.TrimSpace(versionID) == "" {
+		return Verse{}, fmt.Errorf("empty version")
+	}
+
+	var countSQL, selectSQL string
+	var params []any
+
+	if book == "" {
+		countSQL = `SELECT COUNT(*) FROM verses WHERE version = ?`
+		params = []any{versionID}
+	} else {
+		normalizedBook := b.normalizeBook(book)
+		countSQL = `SELECT COUNT(*) FROM verses WHERE version = ? AND book = ?`
+		params = []any{versionID, normalizedBook}
+	}
+
+	var total int
+	if err := b.db.QueryRow(countSQL, params...).Scan(&total); err != nil {
+		return Verse{}, fmt.Errorf("random verse count error: %w", err)
+	}
+	if total == 0 {
+		return Verse{}, fmt.Errorf("no verses found")
+	}
+
+	offset := rand.Intn(total)
+
+	if book == "" {
+		selectSQL = `
+			SELECT book, chapter, verse, version, text FROM verses
+			WHERE version = ?
+			LIMIT 1 OFFSET ?`
+		params = []any{versionID, offset}
+	} else {
+		normalizedBook := b.normalizeBook(book)
+		selectSQL = `
+			SELECT book, chapter, verse, version, text FROM verses
+			WHERE version = ? AND book = ?
+			LIMIT 1 OFFSET ?`
+		params = []any{versionID, normalizedBook, offset}
+	}
+
+	var vr Verse
+	err := b.db.QueryRow(selectSQL, params...).Scan(&vr.Book, &vr.Chapter, &vr.Verse, &vr.Version, &vr.Text)
+	if err != nil {
+		return Verse{}, fmt.Errorf("random verse error: %w", err)
+	}
+	return vr, nil
+}
+
+type MultiVersionVerse struct {
+	Book    string            `json:"book"`
+	Chapter int               `json:"chapter"`
+	Verse   int               `json:"verse"`
+	Texts   map[string]string `json:"texts"`
+}
+
+func (b *BibleService) QueryMultiVersion(queryStr string, versionIDs []string) ([]MultiVersionVerse, error) {
+	if b.db == nil {
+		return nil, fmt.Errorf("database not initialized")
+	}
+	if len(versionIDs) == 0 {
+		return nil, fmt.Errorf("no versions specified")
+	}
+
+	first, err := b.QueryPage(queryStr, versionIDs[0], 0, 1000)
+	if err != nil {
+		return nil, err
+	}
+
+	type loc struct {
+		book    string
+		chapter int
+		verse   int
+	}
+	locMap := make(map[loc]*MultiVersionVerse)
+	order := make([]loc, 0, len(first.Verses))
+
+	for _, v := range first.Verses {
+		l := loc{v.Book, v.Chapter, v.Verse}
+		mv := &MultiVersionVerse{
+			Book:    v.Book,
+			Chapter: v.Chapter,
+			Verse:   v.Verse,
+			Texts:   make(map[string]string),
+		}
+		mv.Texts[versionIDs[0]] = v.Text
+		locMap[l] = mv
+		order = append(order, l)
+	}
+
+	for _, vid := range versionIDs[1:] {
+		page, err := b.QueryPage(queryStr, vid, 0, 1000)
+		if err != nil {
+			continue
+		}
+		for _, v := range page.Verses {
+			l := loc{v.Book, v.Chapter, v.Verse}
+			if mv, ok := locMap[l]; ok {
+				mv.Texts[vid] = v.Text
+			}
+		}
+	}
+
+	result := make([]MultiVersionVerse, len(order))
+	for i, l := range order {
+		result[i] = *locMap[l]
+	}
+	return result, nil
+}
+
+func (b *BibleService) GetBooksByCollection(col Collection) ([]Book, error) {
+	if b.db == nil {
+		return nil, fmt.Errorf("database not initialized")
+	}
+	var minOrd, maxOrd int
+	switch col {
+	case OldTestament:
+		minOrd, maxOrd = 1, 39
+	case NewTestament:
+		minOrd, maxOrd = 40, 66
+	case Apocrypha:
+		minOrd, maxOrd = 100, 999
+	}
+	rows, err := b.db.Query(`
+		SELECT abbr, name, ord FROM books
+		WHERE ord BETWEEN ? AND ?
+		ORDER BY ord`,
+		minOrd, maxOrd,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var books []Book
+	for rows.Next() {
+		var bk Book
+		if err := rows.Scan(&bk.Abbr, &bk.Name, &bk.Ord); err != nil {
+			return nil, err
+		}
+		books = append(books, bk)
+	}
+	return books, rows.Err()
 }
 
 func (b *BibleService) bookOrd(abbr string) (int, error) {

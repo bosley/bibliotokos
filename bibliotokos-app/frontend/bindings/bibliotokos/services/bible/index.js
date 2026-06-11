@@ -9,6 +9,8 @@ export {
 
 export {
     Book,
+    Collection,
+    MultiVersionVerse,
     PassageRange,
     Verse,
     VersePage,

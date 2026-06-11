@@ -20,6 +20,35 @@ export function GetBooks() {
 }
 
 /**
+ * @param {$models.Collection} col
+ * @returns {$CancellablePromise<$models.Book[]>}
+ */
+export function GetBooksByCollection(col) {
+    return $Call.ByID(3687378234, col).then(/** @type {($result: any) => any} */(($result) => {
+        return $$createType1($result);
+    }));
+}
+
+/**
+ * @param {string} versionID
+ * @param {string} book
+ * @returns {$CancellablePromise<number>}
+ */
+export function GetChapterCount(versionID, book) {
+    return $Call.ByID(2067787283, versionID, book);
+}
+
+/**
+ * @param {string} versionID
+ * @param {string} book
+ * @param {number} chapter
+ * @returns {$CancellablePromise<number>}
+ */
+export function GetVerseCount(versionID, book, chapter) {
+    return $Call.ByID(1427068599, versionID, book, chapter);
+}
+
+/**
  * @returns {$CancellablePromise<$models.Version[]>}
  */
 export function GetVersions() {
@@ -29,10 +58,31 @@ export function GetVersions() {
 }
 
 /**
+ * @param {string} versionID
+ * @param {$models.Collection} col
+ * @returns {$CancellablePromise<boolean>}
+ */
+export function HasCollection(versionID, col) {
+    return $Call.ByID(3655245455, versionID, col);
+}
+
+/**
+ * @param {string} targetName
  * @returns {$CancellablePromise<void>}
  */
-export function Init() {
-    return $Call.ByID(757639495);
+export function Init(targetName) {
+    return $Call.ByID(757639495, targetName);
+}
+
+/**
+ * @param {string} queryStr
+ * @param {string[]} versionIDs
+ * @returns {$CancellablePromise<$models.MultiVersionVerse[]>}
+ */
+export function QueryMultiVersion(queryStr, versionIDs) {
+    return $Call.ByID(2525547540, queryStr, versionIDs).then(/** @type {($result: any) => any} */(($result) => {
+        return $$createType5($result);
+    }));
 }
 
 /**
@@ -44,7 +94,18 @@ export function Init() {
  */
 export function QueryPage(queryStr, versionID, offset, limit) {
     return $Call.ByID(4074692340, queryStr, versionID, offset, limit).then(/** @type {($result: any) => any} */(($result) => {
-        return $$createType4($result);
+        return $$createType6($result);
+    }));
+}
+
+/**
+ * @param {string} versionID
+ * @param {string} book
+ * @returns {$CancellablePromise<$models.Verse>}
+ */
+export function RandomVerse(versionID, book) {
+    return $Call.ByID(1661897915, versionID, book).then(/** @type {($result: any) => any} */(($result) => {
+        return $$createType7($result);
     }));
 }
 
@@ -54,7 +115,21 @@ export function QueryPage(queryStr, versionID, offset, limit) {
  */
 export function ResolveRange(refStr) {
     return $Call.ByID(1117089036, refStr).then(/** @type {($result: any) => any} */(($result) => {
-        return $$createType5($result);
+        return $$createType8($result);
+    }));
+}
+
+/**
+ * @param {string} versionID
+ * @param {string} book
+ * @param {string} phrase
+ * @param {number} offset
+ * @param {number} limit
+ * @returns {$CancellablePromise<$models.VersePage>}
+ */
+export function Search(versionID, book, phrase, offset, limit) {
+    return $Call.ByID(1524932645, versionID, book, phrase, offset, limit).then(/** @type {($result: any) => any} */(($result) => {
+        return $$createType6($result);
     }));
 }
 
@@ -63,5 +138,8 @@ const $$createType0 = $models.Book.createFrom;
 const $$createType1 = $Create.Array($$createType0);
 const $$createType2 = $models.Version.createFrom;
 const $$createType3 = $Create.Array($$createType2);
-const $$createType4 = $models.VersePage.createFrom;
-const $$createType5 = $models.PassageRange.createFrom;
+const $$createType4 = $models.MultiVersionVerse.createFrom;
+const $$createType5 = $Create.Array($$createType4);
+const $$createType6 = $models.VersePage.createFrom;
+const $$createType7 = $models.Verse.createFrom;
+const $$createType8 = $models.PassageRange.createFrom;
