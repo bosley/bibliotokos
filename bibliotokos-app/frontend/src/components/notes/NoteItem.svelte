@@ -104,8 +104,8 @@
   }
 
   .delete:hover {
-    color: var(--text);
-    background: var(--bg-hover);
+    color: #e5534b;
+    background: color-mix(in srgb, #e5534b 15%, transparent);
   }
 
   .tag-chips {
