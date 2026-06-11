@@ -18,5 +18,9 @@ type UserRecord struct {
 	VerifiedAt time.Time `json:"verified_at"`
 	CreatedAt  time.Time `json:"created_at"`
 	UpdatedAt  time.Time `json:"updated_at"`
-	LastLogin  time.Time `json:"last_login"` // set to never
+	LastLogin  time.Time `json:"last_login"`
+}
+
+func (u UserRecord) IsAdmin() bool {
+	return u.Role == RoleAdmin
 }

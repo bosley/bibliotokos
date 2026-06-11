@@ -141,6 +141,7 @@ func (s *server) handleValidate(w http.ResponseWriter, r *http.Request) {
 		Email:    record.Email,
 		Role:     string(record.Role),
 		Verified: record.Verified,
+		IsAdmin:  record.IsAdmin(),
 	})
 }
 

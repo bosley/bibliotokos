@@ -23,4 +23,5 @@ type UserDTO struct {
 	Email    string `json:"email"`
 	Role     string `json:"role"`
 	Verified bool   `json:"verified"`
+	IsAdmin  bool   `json:"is_admin"`
 }
