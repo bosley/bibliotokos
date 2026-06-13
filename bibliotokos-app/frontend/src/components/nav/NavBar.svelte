@@ -7,6 +7,7 @@
   let showInfo = false
   let showHelp = false
   let copied = ''
+  let copiedUrl = ''
 
   function openNotes() {
     Events.Emit('open-notes', null)
@@ -33,9 +34,15 @@
       await navigator.clipboard.writeText(q)
       copied = q
       setTimeout(() => { if (copied === q) copied = '' }, 1500)
-    } catch (_) {
-      // clipboard may fail in some envs; ignore
-    }
+    } catch (_) {}
+  }
+
+  async function copyUrl(url) {
+    try {
+      await navigator.clipboard.writeText(url)
+      copiedUrl = url
+      setTimeout(() => { if (copiedUrl === url) copiedUrl = '' }, 1500)
+    } catch (_) {}
   }
 
   function handleKey(e) {
@@ -88,20 +95,47 @@
 
 {#if showInfo}
   <button class="modal-backdrop" on:click={closeModals} aria-label="Close modal">
-    <div class="modal" role="dialog" on:click|stopPropagation on:keydown|stopPropagation>
+    <div class="modal info-modal" role="dialog" on:click|stopPropagation on:keydown|stopPropagation>
       <div class="modal-header">
-        <span>Info</span>
+        <span>About Bibliotokos</span>
         <button class="close-btn" on:click={closeModals}>×</button>
       </div>
       <div class="modal-body">
-        <p><strong>Developer:</strong> Insula Labs, LLC</p>
-        <p><strong>Contact Email:</strong> bosley@insulalabs.com</p>
-        <p><strong>Bibles Sourced from:</strong></p>
-        <ul>
-          <li><a href="https://sacred-texts.com/bib/osrc/index.htm" target="_blank" rel="noopener">https://sacred-texts.com/bib/osrc/index.htm</a></li>
-          <li><a href="https://github.com/seven1m/open-bibles" target="_blank" rel="noopener">https://github.com/seven1m/open-bibles</a></li>
-        </ul>
-        <p>All Bible texts are either Public Domain or licensed under Creative Commons (CC).</p>
+        <div class="info-section">
+          <div class="info-row">
+            <span class="info-label">Developer</span>
+            <span class="info-value">Insula Labs, LLC</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Contact</span>
+            <a href="mailto:bosley@insulalabs.com" class="info-value info-link">bosley@insulalabs.com</a>
+          </div>
+        </div>
+
+        <div class="info-card">
+          <div class="info-card-header">ENV &amp; VENV</div>
+          <p>The <em>Emergent Noetic Version</em> (ENV) and <em>Vulgate Emergent Noetic Version</em> (VENV) are exclusive to Bibliotokos. Created by iteratively translating original-language texts through multiple LLMs to preserve meaning as closely as possible.</p>
+          <div class="env-details">
+            <div class="env-item"><span class="env-tag">ENV</span> Hebrew Tanach + Greek NT</div>
+            <div class="env-item"><span class="env-tag">VENV</span> Latin Vulgate</div>
+          </div>
+          <p class="info-note">Source texts are available in the translator.</p>
+        </div>
+
+        <div class="info-card">
+          <div class="info-card-header">Other Bible Texts</div>
+          <p>Sourced from the following (Public Domain / Creative Commons):</p>
+          <div class="source-links">
+            <button class="source-btn" class:copied={copiedUrl === 'https://sacred-texts.com/bib/osrc/index.htm'} on:click={() => copyUrl('https://sacred-texts.com/bib/osrc/index.htm')}>
+              <span>sacred-texts.com</span>
+              <span class="copy-hint">{copiedUrl === 'https://sacred-texts.com/bib/osrc/index.htm' ? 'Copied!' : 'Copy'}</span>
+            </button>
+            <button class="source-btn" class:copied={copiedUrl === 'https://github.com/seven1m/open-bibles'} on:click={() => copyUrl('https://github.com/seven1m/open-bibles')}>
+              <span>github.com/seven1m/open-bibles</span>
+              <span class="copy-hint">{copiedUrl === 'https://github.com/seven1m/open-bibles' ? 'Copied!' : 'Copy'}</span>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   </button>
@@ -111,37 +145,49 @@
   <button class="modal-backdrop" on:click={closeModals} aria-label="Close modal">
     <div class="modal help-modal" role="dialog" on:click|stopPropagation on:keydown|stopPropagation>
       <div class="modal-header">
-        <span>Help</span>
+        <span>Quick Reference</span>
         <button class="close-btn" on:click={closeModals}>×</button>
       </div>
       <div class="modal-body">
-        <h4>Bible Search Queries</h4>
-        <p class="help-sub">Type these in the top search bar (examples are copyable):</p>
-
-        <div class="query-list">
-          {#each [
-            'John 3:16',
-            'Gen 1',
-            'Psalm 23:1-6',
-            'Rom 8:28',
-            '1cor 13',
-            'mk 1:1',
-            'song 2',
-            'Gen 1 - Rev 22'
-          ] as q}
-            <div class="query-row">
-              <code>{q}</code>
-              <button class="copy-pill" on:click={() => copyQuery(q)}>
-                {copied === q ? 'Copied!' : 'Copy'}
+        <div class="help-card">
+          <div class="help-card-header">
+            <svg viewBox="0 0 16 16" fill="currentColor" width="14" height="14">
+              <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
+            </svg>
+            <span>Search Queries</span>
+          </div>
+          <p class="help-card-sub">Type in the top search bar — click to copy:</p>
+          <div class="query-list">
+            {#each [
+              'John 3:16',
+              'Gen 1',
+              'Psalm 23:1-6',
+              'Rom 8:28',
+              '1cor 13',
+              'mk 1:1',
+              'song 2',
+              'Gen 1 - Rev 22'
+            ] as q}
+              <button class="query-chip" on:click={() => copyQuery(q)} class:copied={copied === q}>
+                <code>{q}</code>
+                {#if copied === q}<span class="copied-label">Copied!</span>{/if}
               </button>
-            </div>
-          {/each}
+            {/each}
+          </div>
+          <p class="help-card-note">Supports book names, aliases, chapters, verses, ranges, and cross-book ranges.</p>
         </div>
 
-        <p class="help-note">Queries support book names/aliases, chapters, verses, ranges, and cross-book ranges with " - ".</p>
-
-        <h4>Linked Passages</h4>
-        <p>In the Notes window, use the "Link passage" button to associate a Bible reference with a note. When you view that passage (or section) in the main Scripture window, any linked notes will appear in a bar at the bottom of the pane. Click a linked note to jump back to it.</p>
+        <div class="help-card">
+          <div class="help-card-header">
+            <svg viewBox="0 0 16 16" fill="currentColor" width="14" height="14">
+              <path d="M4.715 6.542 3.343 7.914a3 3 0 1 0 4.243 4.243l1.828-1.829A3 3 0 0 0 8.586 5.5L8 6.086a1.002 1.002 0 0 0-.154.199 2 2 0 0 1 .861 3.337L6.88 11.45a2 2 0 1 1-2.83-2.83l.793-.792a4.018 4.018 0 0 1-.128-1.287z"/>
+              <path d="M6.586 4.672A3 3 0 0 0 7.414 9.5l.775-.776a2 2 0 0 1-.896-3.346L9.12 3.55a2 2 0 1 1 2.83 2.83l-.793.792c.112.42.155.855.128 1.287l1.372-1.372a3 3 0 1 0-4.243-4.243L6.586 4.672z"/>
+            </svg>
+            <span>Linked Passages</span>
+          </div>
+          <p>Use the <strong>"Link passage"</strong> button in the Notes window to associate a Bible reference with a note.</p>
+          <p>When viewing that passage in Scripture, linked notes appear in a bar at the bottom. Click to jump to the note.</p>
+        </div>
       </div>
     </div>
   </button>
@@ -226,7 +272,69 @@
   }
 
   .help-modal {
-    width: 520px;
+    width: 440px;
+  }
+
+  .help-modal .modal-header {
+    background: var(--bg-hover);
+    border-bottom: 1px solid var(--border);
+    border-radius: var(--radius-sm, 6px) var(--radius-sm, 6px) 0 0;
+    padding: 16px 20px;
+  }
+
+  .help-card {
+    background: var(--bg-hover);
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-bottom: 12px;
+    border-left: 3px solid var(--accent);
+  }
+
+  .help-card:last-child {
+    margin-bottom: 0;
+  }
+
+  .help-card-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    font-size: 13px;
+    margin-bottom: 10px;
+    color: var(--text);
+  }
+
+  .help-card-header svg {
+    color: var(--accent);
+    flex-shrink: 0;
+  }
+
+  .help-card p {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin: 0 0 8px;
+    line-height: 1.5;
+  }
+
+  .help-card p:last-child {
+    margin-bottom: 0;
+  }
+
+  .help-card p strong {
+    color: var(--text);
+    font-weight: 500;
+  }
+
+  .help-card-sub {
+    font-size: 11px !important;
+    opacity: 0.8;
+  }
+
+  .help-card-note {
+    font-size: 11px !important;
+    opacity: 0.7;
+    margin-top: 10px !important;
+    margin-bottom: 0 !important;
   }
 
   .modal-header {
@@ -277,56 +385,204 @@
     text-decoration: underline;
   }
 
-  .help-sub {
-    color: var(--text-muted);
-    font-size: 12px;
-  }
-
   .query-list {
-    margin: 12px 0;
     display: flex;
-    flex-direction: column;
+    flex-wrap: wrap;
     gap: 6px;
+    margin: 8px 0;
   }
 
-  .query-row {
-    display: flex;
+  .query-chip {
+    display: inline-flex;
     align-items: center;
-    justify-content: space-between;
-    background: var(--bg-hover);
-    border-radius: 4px;
-    padding: 6px 10px;
-  }
-
-  .query-row code {
-    font-family: var(--font-mono, monospace);
-    font-size: 12px;
-  }
-
-  .copy-pill {
-    font-size: 11px;
-    padding: 2px 10px;
-    border-radius: 999px;
-    background: var(--accent);
-    color: white;
-    border: none;
+    gap: 6px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 5px 10px;
     cursor: pointer;
-    transition: opacity 0.1s;
+    transition: border-color 0.15s, background 0.15s;
   }
 
-  .copy-pill:hover {
-    opacity: 0.85;
+  .query-chip:hover {
+    border-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 8%, var(--bg-surface));
   }
 
-  .help-note {
-    font-size: 12px;
-    color: var(--text-muted);
-    margin-top: 8px;
+  .query-chip.copied {
+    border-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 15%, var(--bg-surface));
+  }
+
+  .query-chip code {
+    font-family: var(--font-mono, monospace);
+    font-size: 11px;
+    color: var(--text);
+  }
+
+  .copied-label {
+    font-size: 10px;
+    color: var(--accent);
+    font-weight: 500;
   }
 
   h4 {
     margin: 16px 0 8px;
     font-size: 13px;
     color: var(--text-muted);
+  }
+
+  .info-modal {
+    width: 420px;
+  }
+
+  .info-modal .modal-header {
+    background: var(--bg-hover);
+    border-bottom: 1px solid var(--border);
+    border-radius: var(--radius-sm, 6px) var(--radius-sm, 6px) 0 0;
+    padding: 16px 20px;
+  }
+
+
+  .info-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+
+  .info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background: var(--bg-hover);
+    border-radius: 6px;
+  }
+
+  .info-label {
+    font-size: 12px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .info-value {
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  .info-link {
+    color: var(--accent);
+    text-decoration: none;
+  }
+
+  .info-link:hover {
+    text-decoration: underline;
+  }
+
+  .info-card {
+    background: var(--bg-hover);
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-bottom: 12px;
+    border-left: 3px solid var(--accent);
+  }
+
+  .info-card-header {
+    font-weight: 600;
+    font-size: 13px;
+    margin-bottom: 8px;
+    color: var(--text);
+  }
+
+  .info-card p {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin: 0 0 10px;
+    line-height: 1.5;
+  }
+
+  .info-card p em {
+    color: var(--text);
+    font-style: normal;
+    font-weight: 500;
+  }
+
+  .env-details {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin: 10px 0;
+  }
+
+  .env-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  .env-tag {
+    background: var(--accent);
+    color: white;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 4px;
+    letter-spacing: 0.5px;
+  }
+
+  .info-note {
+    font-size: 11px !important;
+    opacity: 0.8;
+    margin-bottom: 0 !important;
+  }
+
+  .source-links {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .source-btn {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 6px 10px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 12px;
+    color: var(--text);
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+  }
+
+  .source-btn:hover {
+    border-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 8%, var(--bg-surface));
+  }
+
+  .source-btn.copied {
+    border-color: var(--accent);
+  }
+
+  .copy-hint {
+    font-size: 10px;
+    color: var(--text-muted);
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+
+  .source-btn:hover .copy-hint,
+  .source-btn.copied .copy-hint {
+    opacity: 1;
+  }
+
+  .source-btn.copied .copy-hint {
+    color: var(--accent);
   }
 </style>
