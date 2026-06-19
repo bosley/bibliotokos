@@ -65,6 +65,11 @@
     border-color: var(--accent);
   }
 
+  option {
+    background: var(--bg);
+    color: var(--text);
+  }
+
   .actions {
     display: flex;
     gap: 2px;

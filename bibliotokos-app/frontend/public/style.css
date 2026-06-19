@@ -14,6 +14,7 @@
 }
 
 body[data-theme="dark"] {
+  color-scheme: dark;
   --bg: #1b2636;
   --bg-surface: #243045;
   --bg-hover: #2d3a52;
@@ -27,6 +28,7 @@ body[data-theme="dark"] {
 }
 
 body[data-theme="light"] {
+  color-scheme: light;
   --bg: #f5f3ef;
   --bg-surface: #ffffff;
   --bg-hover: #eeeae4;

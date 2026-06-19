@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=bibliotokos-app
+Exec=bibliotokos-app
+Icon=bibliotokos-app
+Categories=Development;
+Terminal=false
+Keywords=wails
+Version=1.0
+StartupNotify=false
