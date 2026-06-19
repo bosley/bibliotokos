@@ -6,6 +6,7 @@ import (
 	neturl "net/url"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
+	"github.com/wailsapp/wails/v3/pkg/events"
 
 	"bibliotokos/platform"
 	"bibliotokos/services/bible"
@@ -70,12 +71,20 @@ func main() {
 		URL:              "/",
 	})
 
+	var notesWindow *application.WebviewWindow
+
 	app.Event.On("open-notes", func(e *application.CustomEvent) {
 		url := "/?view=notes"
 		if noteID := eventString(e.Data); noteID != "" {
 			url += "&note=" + neturl.QueryEscape(noteID)
 		}
-		app.Window.NewWithOptions(application.WebviewWindowOptions{
+
+		if notesWindow != nil {
+			notesWindow.Focus()
+			return
+		}
+
+		notesWindow = app.Window.NewWithOptions(application.WebviewWindowOptions{
 			Title:  "Notes — BiblioTokos",
 			Width:  900,
 			Height: 680,
@@ -86,6 +95,10 @@ func main() {
 			},
 			BackgroundColour: application.NewRGB(27, 38, 54),
 			URL:              url,
+		})
+
+		notesWindow.RegisterHook(events.Common.WindowClosing, func(_ *application.WindowEvent) {
+			notesWindow = nil
 		})
 	})
 
