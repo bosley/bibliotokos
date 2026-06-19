@@ -31,10 +31,11 @@
     editor = new Editor({
       el,
       initialValue: note?.content ?? '',
-      initialEditType: 'markdown',
+      initialEditType: 'wysiwyg',
       previewStyle: 'tab',
       height: '100%',
       usageStatistics: false,
+      hideModeSwitch: true,
       autofocus: false,
       placeholder: 'Start writing…',
       theme: get(theme) === 'dark' ? 'dark' : 'default',
@@ -585,13 +586,11 @@
   }
 
   .content-area :global(.toastui-editor-mode-switch) {
-    background: transparent;
-    border-top: 1px solid var(--border);
+    display: none;
   }
 
   .content-area :global(.toastui-editor-md-tab-container) {
-    background: var(--bg-surface);
-    border-bottom-color: var(--border);
+    display: none;
   }
 
   .empty-state {
